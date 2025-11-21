@@ -66,7 +66,8 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
+        # Skip login when push is disabled
+        if: false  # Temporarily disabled: Organization has disabled workflow write permissions
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -97,7 +98,9 @@ jobs:
         with:
           context: .
           file: ./docker/Dockerfile.agui
-          push: ${{ github.event_name != 'pull_request' }}
+          # Temporarily disabled: Organization has disabled workflow write permissions
+          # To enable: Add GHCR_TOKEN secret with write:packages scope
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -114,29 +117,19 @@ jobs:
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Check if we have push permissions
-          if [[ -n "${{ secrets.GHCR_TOKEN }}" ]] || [[ -n "${{ secrets.DEPLOY_TOKEN }}" ]]; then
-            PUSH_ENABLED="true"
-          else
-            PUSH_ENABLED="false"
-          fi
-          
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "✅ Built images locally (PR - no push)" >> $GITHUB_STEP_SUMMARY
-          elif [[ "$PUSH_ENABLED" == "true" ]]; then
-            echo "✅ Built and pushed images to ghcr.io" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ Built images successfully" >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ Push to ghcr.io skipped (no GHCR_TOKEN or DEPLOY_TOKEN secret configured)" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "To enable pushing, add one of these secrets to the repository:" >> $GITHUB_STEP_SUMMARY
-            echo "- GHCR_TOKEN: Personal Access Token with write:packages scope" >> $GITHUB_STEP_SUMMARY
-            echo "- DEPLOY_TOKEN: Organization deploy token" >> $GITHUB_STEP_SUMMARY
-          fi
-          
+          echo "✅ Docker image built successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Image Tags (when pushed):" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Push to ghcr.io is temporarily disabled**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Reason:** Organization has disabled write permissions for workflows" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**To enable pushing:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Create a Personal Access Token with \`write:packages\` scope" >> $GITHUB_STEP_SUMMARY
+          echo "2. Add it as repository secret named \`GHCR_TOKEN\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Change \`push: false\` to \`push: \${{ github.event_name != 'pull_request' }}\` in workflow" >> $GITHUB_STEP_SUMMARY
+          echo "4. Change \`if: false\` to \`if: github.event_name != 'pull_request'\` for login step" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Image Tags (when pushing is enabled):" >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | while read tag; do
             echo "- \`$tag\`" >> $GITHUB_STEP_SUMMARY
           done
