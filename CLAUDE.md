@@ -1,66 +1,66 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with the CIRISGUI repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with the CIRISGUI-Standalone repository.
 
 ## Project Context
 
-CIRISGUI is the unified web interface for the CIRIS AI platform, providing:
-- **Next.js 14 Frontend**: Modern React-based UI with TypeScript
+CIRISGUI-Standalone is the standalone web interface for CIRIS AI agents, providing:
+- **Next.js 14 Frontend**: Modern React-based UI with TypeScript and static export
 - **Complete SDK**: Full TypeScript SDK for CIRIS API integration
-- **Dual-Mode Deployment**: Standalone or CIRISManager-managed
-- **OAuth Integration**: Google/Discord authentication support
+- **Standalone Deployment**: Optimized for localhost and static hosting
+- **Simple Authentication**: Username/password for local development
 - **Real-time Updates**: WebSocket support for live agent interactions
 
 ## Architecture Overview
 
-### Monorepo Structure
+### Repository Structure
 ```
-CIRISGUI/
-├── apps/
-│   ├── agui/          # Next.js 14 frontend application
-│   └── ciris-api/     # Python API runtime wrapper
-├── docker/            # Docker configurations
-├── scripts/           # Development and deployment scripts
-└── packages/          # Shared packages (future)
+CIRISGUI-Standalone/
+├── app/               # Next.js 14 App Router pages
+├── components/        # React components
+├── contexts/          # React context providers
+├── lib/
+│   └── ciris-sdk/    # Complete TypeScript SDK
+├── public/           # Static assets
+├── docker/           # Docker configurations
+└── out/              # Static export output (generated)
 ```
 
 ### Key Technologies
 - **Frontend**: Next.js 14, React 19, TypeScript, Tailwind CSS
 - **SDK**: Complete TypeScript client for CIRIS API v1.0
-- **Authentication**: JWT-based with OAuth2 support
-- **Deployment**: Docker, GitHub Actions CI/CD
-- **Package Manager**: pnpm for workspaces
+- **Authentication**: JWT-based with simple username/password
+- **Deployment**: Static export, Docker, GitHub Actions CI/CD
+- **Package Manager**: npm
 
 ## Development Guidelines
 
 ### Local Development
 ```bash
 # Install dependencies
-cd apps/agui
-pnpm install
+npm install
 
 # Run development server
-pnpm dev  # Runs on http://localhost:3000
+npm run dev  # Runs on http://localhost:3000
 
-# Build for production
-pnpm build
-pnpm start
+# Build static export
+npm run build  # Generates ./out directory
+npm start      # Serves static build locally
 ```
 
 ### Environment Variables
 ```bash
 # Required for API connection
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080  # CIRIS API endpoint
-NEXT_PUBLIC_MANAGER_URL=http://localhost:8888   # CIRISManager endpoint (optional)
 
-# OAuth configuration (production)
-NEXT_PUBLIC_OAUTH_CLIENT_ID=your-client-id
-NEXT_PUBLIC_OAUTH_REDIRECT_URI=https://agents.ciris.ai/oauth/callback
+# Default credentials for standalone mode
+# Default username: admin
+# Default password: ciris (or as configured in CIRIS API)
 ```
 
 ## SDK Usage
 
-The CIRIS SDK is located in `apps/agui/lib/ciris-sdk/` and provides:
+The CIRIS SDK is located in `lib/ciris-sdk/` and provides:
 
 ### Complete API Coverage
 - 78+ methods across 12 resource modules
@@ -95,8 +95,7 @@ const queue = await client.system.getProcessingQueueStatus();
 ### Key Components
 - **AgentSelector**: Dynamic agent discovery and selection
 - **ProtectedRoute**: Authentication-aware route protection
-- **ManagerProtectedRoute**: CIRISManager-specific routes
-- **PermissionRequest**: OAuth permission flow UI
+- **SimpleLoginForm**: Username/password authentication
 
 ### Context Providers
 - **AuthContext**: JWT token management
@@ -105,86 +104,88 @@ const queue = await client.system.getProcessingQueueStatus();
 ### Pages Structure
 ```
 app/
-├── agents/         # Agent management
+├── login/          # Simple login page
+├── interact/       # Main agent interaction interface
+├── account/        # User account management
+│   ├── privacy/    # Privacy settings
+│   ├── consent/    # Consent management
+│   └── settings/   # User preferences
+├── agents/         # Agent information
 ├── audit/          # Audit trail viewer
 ├── config/         # Configuration management
 ├── memory/         # Memory graph visualization
 ├── system/         # System monitoring
-├── runtime/        # Runtime control
-├── services/       # Service health dashboard
-├── manager/        # CIRISManager integration
-└── oauth/          # OAuth callback handlers
+└── services/       # Service health dashboard
 ```
 
-## Deployment Modes
+## Deployment
 
-### 1. Standalone Mode
+### Standalone Static Export
+This repository is configured for static export and can be deployed anywhere:
+```bash
+npm run build  # Creates ./out directory with static files
+```
+
+### Docker Deployment
 Direct connection to CIRIS API:
 ```yaml
 services:
   ciris-gui:
-    image: ghcr.io/cirisai/ciris-gui:latest
+    image: ghcr.io/cirisai/ciris-gui-standalone:latest
     environment:
       - NEXT_PUBLIC_API_BASE_URL=http://ciris-api:8080
     ports:
       - "3000:3000"
 ```
 
-### 2. Manager Mode
-Integration with CIRISManager:
-```yaml
-services:
-  ciris-gui:
-    image: ghcr.io/cirisai/ciris-gui:latest
-    environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://ciris-api:8080
-      - NEXT_PUBLIC_MANAGER_URL=http://ciris-manager:8888
-    ports:
-      - "3000:3000"
+### Local Development
+```bash
+# Run alongside CIRIS API
+npm run dev
+# Access at http://localhost:3000
+# Login with default credentials (admin/ciris)
 ```
 
 ## CI/CD Pipeline
 
 ### Build Process
-1. **Test**: Run Jest tests for components
-2. **Build**: Next.js production build
-3. **Docker**: Build container image
+1. **Install**: Install dependencies with npm
+2. **Build**: Next.js static export build
+3. **Docker**: Build container image (optional)
 4. **Push**: Push to GitHub Container Registry
 
 ### Deployment
-- **Production**: Automatic deployment on main branch
-- **Images**: `ghcr.io/cirisai/ciris-gui:latest`
-- **Notification**: CIRISManager orchestrates updates
+- **Static**: Deploy `./out` directory to any static host
+- **Docker**: `ghcr.io/cirisai/ciris-gui-standalone:latest`
+- **Automatic**: GitHub Actions on main branch commits
 
 ## Testing
 
-### Unit Tests
+### Manual Testing
 ```bash
-cd apps/agui
-pnpm test
+npm run dev
+# Test locally against running CIRIS API
 ```
 
-### SDK Integration Tests
+### Build Verification
 ```bash
-node test-sdk-all-methods.js
-```
-
-### OAuth Flow Tests
-```bash
-node test-oauth-flow-simulation.js
+npm run build
+# Verify ./out directory is created successfully
 ```
 
 ## Security Considerations
 
 ### Authentication
 - JWT tokens with automatic refresh
-- OAuth2 integration for production
+- Simple username/password for local development
+- Tokens stored in browser localStorage
 - Role-based access control (OBSERVER/ADMIN/AUTHORITY/SYSTEM_ADMIN)
 
 ### API Security
 - All API calls require authentication
-- Emergency endpoints bypass auth (with Ed25519 signatures)
-- CORS configuration for production domains
+- Designed for trusted localhost environments
+- CORS configuration for local development
+- Default credentials should be changed in production
 
 ## Performance Optimization
 
@@ -202,10 +203,10 @@ node test-oauth-flow-simulation.js
 ## Common Issues and Solutions
 
 ### CORS Errors
-Ensure API allows origin:
+Ensure API allows localhost origin:
 ```python
 # In CIRIS API
-CORS(app, origins=["http://localhost:3000", "https://agents.ciris.ai"])
+CORS(app, origins=["http://localhost:3000"])
 ```
 
 ### WebSocket Connection
@@ -215,11 +216,10 @@ const ws = new WebSocket(`ws://localhost:8080/v1/ws`);
 ws.onopen = () => console.log('Connected');
 ```
 
-### OAuth Callback
-Ensure redirect URI matches exactly:
-```
-https://agents.ciris.ai/oauth/{agent_id}/{provider}/callback
-```
+### Login Issues
+- Verify CIRIS API is running on port 8080
+- Check default credentials match API configuration
+- Ensure JWT tokens are being stored in localStorage
 
 ## Development Best Practices
 
@@ -253,17 +253,17 @@ https://agents.ciris.ai/oauth/{agent_id}/{provider}/callback
 ## Future Enhancements
 
 ### Planned Features
-- [ ] Real-time collaboration
-- [ ] Advanced memory visualization
-- [ ] Plugin system for custom tools
+- [ ] Enhanced privacy and consent management
+- [ ] Advanced user settings and preferences
+- [ ] Improved interaction history
 - [ ] Mobile-responsive design improvements
-- [ ] Offline mode with service workers
+- [ ] Progressive Web App (PWA) support
 
 ### Technical Debt
-- [ ] Migrate to App Router fully
-- [ ] Implement comprehensive E2E tests
-- [ ] Add Storybook for component documentation
-- [ ] Optimize bundle size further
+- [ ] Add comprehensive component tests
+- [ ] Improve error handling and user feedback
+- [ ] Optimize bundle size for static export
+- [ ] Add comprehensive documentation
 
 ## Contributing
 
@@ -281,9 +281,18 @@ https://agents.ciris.ai/oauth/{agent_id}/{provider}/callback
 
 ## Resources
 
-- **CIRIS Documentation**: See CIRISAgent/CLAUDE.md
-- **Next.js Docs**: https://nextjs.org/docs
+- **CIRIS API**: See CIRISAgent repository for API documentation
+- **Next.js Static Export**: https://nextjs.org/docs/app/building-your-application/deploying/static-exports
 - **TypeScript**: https://www.typescriptlang.org/docs
 - **Tailwind CSS**: https://tailwindcss.com/docs
 
-Remember: The GUI is the face of CIRIS - make it intuitive, responsive, and delightful to use!
+## Key Differences from Main CIRISGUI
+
+This standalone version differs from the main CIRISGUI repository:
+- **No OAuth**: Simple username/password authentication only
+- **No CIRISManager**: Direct API connection, no manager integration
+- **Static Export**: Optimized for static hosting and localhost use
+- **Simplified Deployment**: Single container or static files
+- **Focused Features**: Core agent interaction without enterprise features
+
+Remember: This standalone GUI is designed for simple, local CIRIS agent interactions!
