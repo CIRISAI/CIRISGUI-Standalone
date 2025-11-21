@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  output: "export",
+  trailingSlash: true, // Required for static file servers - generates /page/index.html instead of /page.html
   images: {
     unoptimized: true,
   },
