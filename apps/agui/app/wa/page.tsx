@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { cirisClient } from '../../lib/ciris-sdk';
-import { Deferral } from '../../lib/ciris-sdk/resources/wise-authority';
-import type { UserDetail } from '../../lib/ciris-sdk';
-import { useAuth } from '../../contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
-import { ShieldIcon, ExclamationTriangleIcon } from '../../components/Icons';
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { cirisClient } from "../../lib/ciris-sdk";
+import { Deferral } from "../../lib/ciris-sdk/resources/wise-authority";
+import type { UserDetail } from "../../lib/ciris-sdk";
+import { useAuth } from "../../contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { ShieldIcon, ExclamationTriangleIcon } from "../../components/Icons";
 
 export default function WAPage() {
   const { user, hasRole } = useAuth();
@@ -16,19 +16,19 @@ export default function WAPage() {
   const queryClient = useQueryClient();
   const [selectedDeferral, setSelectedDeferral] = useState<Deferral | null>(null);
   const [expandedDeferral, setExpandedDeferral] = useState<string | null>(null);
-  const [decision, setDecision] = useState<'approve' | 'deny'>('approve');
-  const [reasoning, setReasoning] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'resolved'>('pending');
-  const [sortBy, setSortBy] = useState<'timestamp' | 'urgency' | 'type'>('timestamp');
+  const [decision, setDecision] = useState<"approve" | "deny">("approve");
+  const [reasoning, setReasoning] = useState("");
+  const [filter, setFilter] = useState<"all" | "pending" | "resolved">("pending");
+  const [sortBy, setSortBy] = useState<"timestamp" | "urgency" | "type">("timestamp");
   const [userDetail, setUserDetail] = useState<UserDetail | null>(null);
   const [showSignatureHelp, setShowSignatureHelp] = useState(false);
-  const [signature, setSignature] = useState('');
+  const [signature, setSignature] = useState("");
 
   // Check access - allow admins or authorities to view
   useEffect(() => {
-    if (user && !hasRole('ADMIN') && !hasRole('AUTHORITY')) {
-      toast.error('Access denied. Admin or Authority role required.');
-      router.push('/');
+    if (user && !hasRole("ADMIN") && !hasRole("AUTHORITY")) {
+      toast.error("Access denied. Admin or Authority role required.");
+      router.push("/");
     }
   }, [user, hasRole, router]);
 
@@ -44,49 +44,61 @@ export default function WAPage() {
       const detail = await cirisClient.users.get(user!.user_id);
       setUserDetail(detail);
     } catch (error) {
-      console.error('Failed to load user details:', error);
+      console.error("Failed to load user details:", error);
     }
   };
 
   // Fetch deferrals
   const { data: deferrals = [], isLoading } = useQuery({
-    queryKey: ['deferrals'],
+    queryKey: ["deferrals"],
     queryFn: () => cirisClient.wiseAuthority.getDeferrals(),
     refetchInterval: 5000, // Refresh every 5 seconds
-    enabled: hasRole('ADMIN') || hasRole('AUTHORITY'), // Allow admins and authorities to view
+    enabled: hasRole("ADMIN") || hasRole("AUTHORITY"), // Allow admins and authorities to view
   });
 
   // Check if user can resolve deferrals (must be a minted WA)
-  const canResolve = userDetail?.wa_role === 'authority' || userDetail?.wa_role === 'admin';
+  const canResolve =
+    userDetail?.wa_role === "authority" ||
+    userDetail?.wa_role === "admin" ||
+    userDetail?.wa_role === "root";
 
   // Resolve deferral mutation
   const resolveMutation = useMutation({
-    mutationFn: ({ deferral_id, decision, reasoning, signature }: { deferral_id: string; decision: string; reasoning: string; signature: string }) =>
-      cirisClient.wiseAuthority.resolveDeferral(deferral_id, decision, reasoning, signature),
+    mutationFn: ({
+      deferral_id,
+      decision,
+      reasoning,
+      signature,
+    }: {
+      deferral_id: string;
+      decision: string;
+      reasoning: string;
+      signature: string;
+    }) => cirisClient.wiseAuthority.resolveDeferral(deferral_id, decision, reasoning, signature),
     onSuccess: () => {
-      toast.success('Deferral resolved successfully');
-      queryClient.invalidateQueries({ queryKey: ['deferrals'] });
+      toast.success("Deferral resolved successfully");
+      queryClient.invalidateQueries({ queryKey: ["deferrals"] });
       setExpandedDeferral(null);
       setSelectedDeferral(null);
-      setReasoning('');
-      setDecision('approve');
+      setReasoning("");
+      setDecision("approve");
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to resolve deferral');
+      toast.error(error.response?.data?.detail || "Failed to resolve deferral");
     },
   });
 
   // Filter deferrals
-  const filteredDeferrals = deferrals.filter((d) => {
-    if (filter === 'all') return true;
-    if (filter === 'pending') return d.status === 'pending';
-    if (filter === 'resolved') return d.status === 'approved' || d.status === 'rejected';
+  const filteredDeferrals = deferrals.filter(d => {
+    if (filter === "all") return true;
+    if (filter === "pending") return d.status === "pending";
+    if (filter === "resolved") return d.status === "approved" || d.status === "rejected";
     return true;
   });
 
   // Sort deferrals
   const sortedDeferrals = [...filteredDeferrals].sort((a, b) => {
-    if (sortBy === 'timestamp') {
+    if (sortBy === "timestamp") {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     }
     // Urgency sorting not supported by SDK Deferral type
@@ -96,47 +108,67 @@ export default function WAPage() {
   // Stats calculation
   const stats = {
     total: deferrals.length,
-    pending: deferrals.filter((d) => d.status === 'pending').length,
-    approved: deferrals.filter((d) => d.status === 'approved').length,
-    denied: deferrals.filter((d) => d.status === 'rejected').length,
-    resolutionRate: deferrals.length > 0
-      ? ((deferrals.filter((d) => d.status === 'approved' || d.status === 'rejected').length / deferrals.length) * 100).toFixed(1)
-      : 0,
+    pending: deferrals.filter(d => d.status === "pending").length,
+    approved: deferrals.filter(d => d.status === "approved").length,
+    denied: deferrals.filter(d => d.status === "rejected").length,
+    resolutionRate:
+      deferrals.length > 0
+        ? (
+            (deferrals.filter(d => d.status === "approved" || d.status === "rejected").length /
+              deferrals.length) *
+            100
+          ).toFixed(1)
+        : 0,
   };
 
   const getRiskColor = (level?: string) => {
     switch (level) {
-      case 'critical': return 'red';
-      case 'high': return 'orange';
-      case 'medium': return 'yellow';
-      case 'low': return 'green';
-      default: return 'gray';
+      case "critical":
+        return "red";
+      case "high":
+        return "orange";
+      case "medium":
+        return "yellow";
+      case "low":
+        return "green";
+      default:
+        return "gray";
     }
   };
 
   const getRiskBadgeClasses = (level?: string) => {
     switch (level) {
-      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
-      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case "critical":
+        return "bg-red-100 text-red-800 border-red-200";
+      case "high":
+        return "bg-orange-100 text-orange-800 border-orange-200";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "low":
+        return "bg-green-100 text-green-800 border-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
   const getStatusBadgeClasses = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-blue-100 text-blue-800';
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'denied': return 'bg-red-100 text-red-800';
-      case 'expired': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "pending":
+        return "bg-blue-100 text-blue-800";
+      case "approved":
+        return "bg-green-100 text-green-800";
+      case "denied":
+        return "bg-red-100 text-red-800";
+      case "expired":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const handleResolve = () => {
     if (!selectedDeferral || !reasoning.trim()) {
-      toast.error('Please provide reasoning for your decision');
+      toast.error("Please provide reasoning for your decision");
       return;
     }
     // Use a placeholder signature - the server should validate based on the authenticated user
@@ -144,11 +176,11 @@ export default function WAPage() {
       deferral_id: selectedDeferral.deferral_id,
       decision,
       reasoning,
-      signature: 'server-will-sign', // Server should sign with stored WA key
+      signature: "server-will-sign", // Server should sign with stored WA key
     });
   };
 
-  if (!hasRole('ADMIN') && !hasRole('AUTHORITY')) {
+  if (!hasRole("ADMIN") && !hasRole("AUTHORITY")) {
     return null;
   }
 
@@ -175,9 +207,7 @@ export default function WAPage() {
               ) : (
                 <div className="flex items-center space-x-2 bg-yellow-50 px-4 py-2 rounded-lg">
                   <ExclamationTriangleIcon size="sm" className="text-yellow-600" />
-                  <span className="text-sm font-medium text-yellow-900">
-                    View Only (Not a WA)
-                  </span>
+                  <span className="text-sm font-medium text-yellow-900">View Only (Not a WA)</span>
                 </div>
               )}
             </div>
@@ -227,7 +257,7 @@ export default function WAPage() {
               <label className="text-sm font-medium text-gray-700">Filter:</label>
               <select
                 value={filter}
-                onChange={(e) => setFilter(e.target.value as any)}
+                onChange={e => setFilter(e.target.value as any)}
                 className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               >
                 <option value="all">All Deferrals</option>
@@ -239,7 +269,7 @@ export default function WAPage() {
               <label className="text-sm font-medium text-gray-700">Sort by:</label>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={e => setSortBy(e.target.value as any)}
                 className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               >
                 <option value="timestamp">Date (Newest First)</option>
@@ -273,11 +303,13 @@ export default function WAPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {sortedDeferrals.map((deferral) => (
+              {sortedDeferrals.map(deferral => (
                 <div
                   key={deferral.deferral_id}
                   className={`border rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer ${
-                    selectedDeferral?.deferral_id === deferral.deferral_id ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'
+                    selectedDeferral?.deferral_id === deferral.deferral_id
+                      ? "border-indigo-500 bg-indigo-50"
+                      : "border-gray-200"
                   }`}
                   onClick={() => setSelectedDeferral(deferral)}
                 >
@@ -287,7 +319,9 @@ export default function WAPage() {
                         <h4 className="text-sm font-semibold text-gray-900">
                           Thought ID: {deferral.thought_id}
                         </h4>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClasses(deferral.status)}`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClasses(deferral.status)}`}
+                        >
                           {deferral.status.toUpperCase()}
                         </span>
                       </div>
@@ -301,31 +335,44 @@ export default function WAPage() {
                       {deferral.resolution && (
                         <div className="mt-3 p-3 bg-gray-50 rounded-md">
                           <p className="text-xs font-medium text-gray-700">
-                            Resolution: <span className={deferral.resolution.decision === 'approve' ? 'text-green-600' : 'text-red-600'}>
+                            Resolution:{" "}
+                            <span
+                              className={
+                                deferral.resolution.decision === "approve"
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                              }
+                            >
                               {deferral.resolution.decision.toUpperCase()}
                             </span>
                           </p>
-                          <p className="text-xs text-gray-600 mt-1">{deferral.resolution.reasoning}</p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {deferral.resolution.reasoning}
+                          </p>
                           <p className="text-xs text-gray-500 mt-1">
-                            by {deferral.resolution.resolved_by} {deferral.resolved_at && `at ${new Date(deferral.resolved_at).toLocaleString()}`}
+                            by {deferral.resolution.resolved_by}{" "}
+                            {deferral.resolved_at &&
+                              `at ${new Date(deferral.resolved_at).toLocaleString()}`}
                           </p>
                         </div>
                       )}
                     </div>
 
-                    {deferral.status === 'pending' && canResolve && (
+                    {deferral.status === "pending" && canResolve && (
                       <button
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
                           setSelectedDeferral(deferral);
-                          setExpandedDeferral(expandedDeferral === deferral.deferral_id ? null : deferral.deferral_id);
+                          setExpandedDeferral(
+                            expandedDeferral === deferral.deferral_id ? null : deferral.deferral_id
+                          );
                         }}
                         className="ml-4 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                       >
                         Resolve
                       </button>
                     )}
-                    {deferral.status === 'pending' && !canResolve && (
+                    {deferral.status === "pending" && !canResolve && (
                       <span className="ml-4 text-xs text-gray-500 italic">
                         WA authority required to resolve
                       </span>
@@ -346,8 +393,8 @@ export default function WAPage() {
                                 type="radio"
                                 className="form-radio text-green-600"
                                 value="approve"
-                                checked={decision === 'approve'}
-                                onChange={(e) => setDecision(e.target.value as 'approve')}
+                                checked={decision === "approve"}
+                                onChange={e => setDecision(e.target.value as "approve")}
                               />
                               <span className="ml-2 text-sm text-gray-700">Approve</span>
                             </label>
@@ -356,8 +403,8 @@ export default function WAPage() {
                                 type="radio"
                                 className="form-radio text-red-600"
                                 value="deny"
-                                checked={decision === 'deny'}
-                                onChange={(e) => setDecision(e.target.value as 'deny')}
+                                checked={decision === "deny"}
+                                onChange={e => setDecision(e.target.value as "deny")}
                               />
                               <span className="ml-2 text-sm text-gray-700">Deny</span>
                             </label>
@@ -365,7 +412,10 @@ export default function WAPage() {
                         </div>
 
                         <div>
-                          <label htmlFor={`reasoning-${deferral.deferral_id}`} className="block text-sm font-medium text-gray-700">
+                          <label
+                            htmlFor={`reasoning-${deferral.deferral_id}`}
+                            className="block text-sm font-medium text-gray-700"
+                          >
                             Reasoning
                           </label>
                           <textarea
@@ -374,7 +424,7 @@ export default function WAPage() {
                             className="mt-1 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                             placeholder="Provide detailed reasoning for your decision..."
                             value={reasoning}
-                            onChange={(e) => setReasoning(e.target.value)}
+                            onChange={e => setReasoning(e.target.value)}
                           />
                         </div>
 
@@ -382,8 +432,8 @@ export default function WAPage() {
                           <button
                             onClick={() => {
                               setExpandedDeferral(null);
-                              setReasoning('');
-                              setDecision('approve');
+                              setReasoning("");
+                              setDecision("approve");
                             }}
                             className="px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                           >
@@ -394,7 +444,7 @@ export default function WAPage() {
                             disabled={!reasoning.trim() || resolveMutation.isPending}
                             className="px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
                           >
-                            {resolveMutation.isPending ? 'Resolving...' : 'Submit Resolution'}
+                            {resolveMutation.isPending ? "Resolving..." : "Submit Resolution"}
                           </button>
                         </div>
                       </div>
@@ -416,7 +466,9 @@ export default function WAPage() {
             <div className="space-y-4">
               <div>
                 <h4 className="text-sm font-medium text-gray-700">Thought ID</h4>
-                <p className="mt-1 text-sm font-mono text-gray-600">{selectedDeferral.thought_id}</p>
+                <p className="mt-1 text-sm font-mono text-gray-600">
+                  {selectedDeferral.thought_id}
+                </p>
               </div>
 
               <div>
@@ -457,14 +509,12 @@ export default function WAPage() {
           </p>
 
           {canResolve ? (
-            <button
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
-            >
+            <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
               Provide Unsolicited Guidance
             </button>
           ) : (
             <button
-              onClick={() => router.push('/users')}
+              onClick={() => router.push("/users")}
               className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
             >
               Go to Users Page to Get Minted
@@ -475,10 +525,20 @@ export default function WAPage() {
 
       {/* Resolution Modal - Removed, using inline resolution instead */}
       {false && (
-        <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div
+          className="fixed z-10 inset-0 overflow-y-auto"
+          aria-labelledby="modal-title"
+          role="dialog"
+          aria-modal="true"
+        >
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              aria-hidden="true"
+            ></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">
+              &#8203;
+            </span>
             <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
               <div>
                 <div className="text-center">
@@ -500,8 +560,8 @@ export default function WAPage() {
                           type="radio"
                           className="form-radio text-green-600"
                           value="approve"
-                          checked={decision === 'approve'}
-                          onChange={(e) => setDecision(e.target.value as 'approve')}
+                          checked={decision === "approve"}
+                          onChange={e => setDecision(e.target.value as "approve")}
                         />
                         <span className="ml-2 text-sm text-gray-700">Approve</span>
                       </label>
@@ -510,8 +570,8 @@ export default function WAPage() {
                           type="radio"
                           className="form-radio text-red-600"
                           value="deny"
-                          checked={decision === 'deny'}
-                          onChange={(e) => setDecision(e.target.value as 'deny')}
+                          checked={decision === "deny"}
+                          onChange={e => setDecision(e.target.value as "deny")}
                         />
                         <span className="ml-2 text-sm text-gray-700">Deny</span>
                       </label>
@@ -529,7 +589,7 @@ export default function WAPage() {
                         className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                         placeholder="Provide detailed reasoning for your decision..."
                         value={reasoning}
-                        onChange={(e) => setReasoning(e.target.value)}
+                        onChange={e => setReasoning(e.target.value)}
                       />
                     </div>
                     <p className="mt-2 text-sm text-gray-500">
@@ -539,7 +599,10 @@ export default function WAPage() {
 
                   <div className="mt-4">
                     <div className="flex items-center justify-between">
-                      <label htmlFor="signature" className="block text-sm font-medium text-gray-700">
+                      <label
+                        htmlFor="signature"
+                        className="block text-sm font-medium text-gray-700"
+                      >
                         WA Signature <span className="text-red-500">*</span>
                       </label>
                       <button
@@ -557,7 +620,7 @@ export default function WAPage() {
                         className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md font-mono text-xs"
                         placeholder="Paste your Ed25519 signature here..."
                         value={signature}
-                        onChange={(e) => setSignature(e.target.value)}
+                        onChange={e => setSignature(e.target.value)}
                       />
                     </div>
                     {showSignatureHelp && (
@@ -573,7 +636,8 @@ export default function WAPage() {
                           <li>Paste the base64-encoded signature above</li>
                         </ol>
                         <div className="mt-2 text-purple-800">
-                          <strong>Note:</strong> Your signature proves you are an authorized WA making this decision.
+                          <strong>Note:</strong> Your signature proves you are an authorized WA
+                          making this decision.
                         </div>
                       </div>
                     )}
@@ -586,18 +650,20 @@ export default function WAPage() {
                   onClick={handleResolve}
                   disabled={!reasoning.trim() || resolveMutation.isPending}
                   className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:col-start-2 sm:text-sm ${
-                    decision === 'approve'
-                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
-                      : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                    decision === "approve"
+                      ? "bg-green-600 hover:bg-green-700 focus:ring-green-500"
+                      : "bg-red-600 hover:bg-red-700 focus:ring-red-500"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  {resolveMutation.isPending ? 'Resolving...' : `${decision === 'approve' ? 'Approve' : 'Deny'} Deferral`}
+                  {resolveMutation.isPending
+                    ? "Resolving..."
+                    : `${decision === "approve" ? "Approve" : "Deny"} Deferral`}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setExpandedDeferral(null);
-                    setReasoning('');
+                    setReasoning("");
                   }}
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm"
                 >
