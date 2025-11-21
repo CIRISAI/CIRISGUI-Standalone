@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { cirisClient } from "../../lib/ciris-sdk";
 import type { OAuthProvider, AgentInfo } from "../../lib/ciris-sdk";
@@ -20,25 +20,28 @@ export default function LoginPage() {
   const [betaAcknowledged, setBetaAcknowledged] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const { login } = useAuth();
+  const hasLoadedAgents = useRef(false); // Prevent double-loading in React Strict Mode
 
   // Always show Google and Discord OAuth options
   const oauthProviders = [
     { provider: "google", name: "Google" },
-    { provider: "discord", name: "Discord" }
+    { provider: "discord", name: "Discord" },
   ];
 
   // Load agents by detecting deployment mode dynamically
   useEffect(() => {
+    if (hasLoadedAgents.current) return; // Already loaded
+    hasLoadedAgents.current = true;
     const loadAgents = async () => {
       // Try CIRISManager first to detect managed mode
       try {
-        console.log('Checking for CIRISManager...');
-        const response = await fetch('/manager/v1/agents');
+        console.log("Checking for CIRISManager...");
+        const response = await fetch("/manager/v1/agents");
         if (response.ok) {
           // CIRISManager is available - we're in managed mode
-          console.log('CIRISManager detected - using managed mode');
+          console.log("CIRISManager detected - using managed mode");
           const data = await response.json();
-          console.log('Loaded agents:', data.agents);
+          console.log("Loaded agents:", data.agents);
 
           // Convert manager API response to AgentInfo format
           const agentsList: AgentInfo[] = data.agents.map((agent: any) => ({
@@ -57,19 +60,19 @@ export default function LoginPage() {
           setAgents(agentsList);
           if (agentsList.length > 0) {
             // Select the first healthy agent by default
-            const healthyAgent = agentsList.find(a => a.health === 'healthy') || agentsList[0];
+            const healthyAgent = agentsList.find(a => a.health === "healthy") || agentsList[0];
             setSelectedAgent(healthyAgent.agent_id);
           }
           setLoadingAgents(false); // Important: set loading to false!
           return; // Exit early for managed mode
         }
       } catch (error) {
-        console.log('CIRISManager not available, trying standalone mode');
+        console.log("CIRISManager not available, trying standalone mode");
 
         // CIRISManager not available - check if we're in managed mode
-        if (window.location.hostname === 'agents.ciris.ai') {
+        if (window.location.hostname === "agents.ciris.ai") {
           // We're in managed mode but CIRISManager is unavailable
-          setError(new Error('CIRISManager unavailable - no agents can be accessed'));
+          setError(new Error("CIRISManager unavailable - no agents can be accessed"));
           setAgents([]);
           setLoadingAgents(false);
           return; // Exit early
@@ -78,7 +81,7 @@ export default function LoginPage() {
 
       // Otherwise try standalone mode
       try {
-        console.log('Trying standalone mode...');
+        console.log("Trying standalone mode...");
         // Configure SDK for standalone mode - use env variable if available
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || window.location.origin;
         cirisClient.setConfig({ baseURL: apiBaseUrl });
@@ -86,48 +89,50 @@ export default function LoginPage() {
         // Try to fetch real identity from the API
         try {
           const identity = await cirisClient.agent.getIdentity();
-          
+
           // Create agent info from real identity
           const realAgent: AgentInfo = {
             agent_id: identity.agent_id,
-            agent_name: identity.name,  // Real name from API!
-            container_name: 'standalone',
-            status: 'running',
+            agent_name: identity.name, // Real name from API!
+            container_name: "standalone",
+            status: "running",
             api_endpoint: apiBaseUrl,
             created_at: new Date().toISOString(),
-            update_available: false
+            update_available: false,
           };
 
           setAgents([realAgent]);
           setSelectedAgent(realAgent.agent_id);
-          console.log('Standalone mode successful with identity');
+          console.log("Standalone mode successful with identity");
         } catch (identityError: any) {
           // If we get a 401, the API is there but needs auth - create a default agent
-          if (identityError?.name === 'CIRISAuthError' || 
-              identityError?.status === 401 || 
-              identityError?.message?.includes('Authentication failed')) {
-            console.log('API requires authentication - using default agent');
+          if (
+            identityError?.name === "CIRISAuthError" ||
+            identityError?.status === 401 ||
+            identityError?.message?.includes("Authentication failed")
+          ) {
+            console.log("API requires authentication - using default agent");
             const defaultAgent: AgentInfo = {
-              agent_id: 'datum',
-              agent_name: 'CIRIS Agent',
-              container_name: 'standalone',
-              status: 'running',
+              agent_id: "datum",
+              agent_name: "CIRIS Agent",
+              container_name: "standalone",
+              status: "running",
               api_endpoint: apiBaseUrl,
               created_at: new Date().toISOString(),
-              update_available: false
+              update_available: false,
             };
-            
+
             setAgents([defaultAgent]);
             setSelectedAgent(defaultAgent.agent_id);
-            console.log('Standalone mode ready for authentication');
+            console.log("Standalone mode ready for authentication");
           } else {
             // Some other error - rethrow
             throw identityError;
           }
         }
       } catch (error) {
-        console.error('Neither CIRISManager nor standalone API available:', error);
-        setError(error instanceof Error ? error : new Error('No CIRIS infrastructure available'));
+        console.error("Neither CIRISManager nor standalone API available:", error);
+        setError(error instanceof Error ? error : new Error("No CIRIS infrastructure available"));
         setAgents([]);
       } finally {
         setLoadingAgents(false);
@@ -144,7 +149,7 @@ export default function LoginPage() {
       let baseURL;
 
       // Check if we have multiple agents (managed mode) or single agent (standalone)
-      if (agents.length > 1 || agent.container_name !== 'standalone') {
+      if (agents.length > 1 || agent.container_name !== "standalone") {
         // Managed mode: use agent-specific API path
         baseURL = `${window.location.origin}/api/${agent.agent_id}`;
       } else {
@@ -155,8 +160,8 @@ export default function LoginPage() {
       cirisClient.setConfig({ baseURL });
 
       // Store selected agent for use after login
-      localStorage.setItem('selectedAgentId', agent.agent_id);
-      localStorage.setItem('selectedAgentName', agent.agent_name);
+      localStorage.setItem("selectedAgentId", agent.agent_id);
+      localStorage.setItem("selectedAgentName", agent.agent_name);
     }
   }, [selectedAgent, agents]);
 
@@ -164,21 +169,21 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+
     try {
       // Store selected agent for AuthContext
       const agent = agents.find(a => a.agent_id === selectedAgent);
       if (agent) {
-        localStorage.setItem('selectedAgentId', agent.agent_id);
-        localStorage.setItem('selectedAgentName', agent.agent_name);
+        localStorage.setItem("selectedAgentId", agent.agent_id);
+        localStorage.setItem("selectedAgentName", agent.agent_name);
       }
-      
+
       // Perform login
       await login(username, password);
-      
+
       // Login successful - AuthContext will handle the redirect
     } catch (err: any) {
-      console.error('Login failed:', err);
+      console.error("Login failed:", err);
       setError(err);
     } finally {
       setLoading(false);
@@ -188,9 +193,9 @@ export default function LoginPage() {
   const handleOAuthLogin = async (provider: string) => {
     try {
       // Clear any leftover OAuth linking state - this is a LOGIN, not a link
-      localStorage.removeItem('oauthIntention');
-      localStorage.removeItem('oauthProvider');
-      localStorage.removeItem('oauthReturnUrl');
+      localStorage.removeItem("oauthIntention");
+      localStorage.removeItem("oauthProvider");
+      localStorage.removeItem("oauthReturnUrl");
 
       const agent = agents.find(a => a.agent_id === selectedAgent);
       if (!agent) return;
@@ -199,7 +204,7 @@ export default function LoginPage() {
       let redirectUri;
 
       // Determine OAuth URLs based on deployment mode
-      if (agents.length > 1 || agent.container_name !== 'standalone') {
+      if (agents.length > 1 || agent.container_name !== "standalone") {
         // Managed mode: use agent-specific paths
         // Include marketing_opt_in parameter in callback URL
         const callbackUrl = `${window.location.origin}/oauth/${selectedAgent}/${provider}/callback?marketing_opt_in=${marketingOptIn}`;
@@ -225,23 +230,34 @@ export default function LoginPage() {
       case "google":
         return (
           <svg className="w-5 h-5" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            <path
+              fill="#4285F4"
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+            />
           </svg>
         );
       case "discord":
         return (
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#5865F2">
-            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z" />
           </svg>
         );
       default:
         return "🔑";
     }
   };
-
 
   const handleManagerGoogleLogin = async () => {
     try {
@@ -275,7 +291,6 @@ export default function LoginPage() {
           )}
         </div>
         <div className="mt-8 space-y-6">
-
           {/* Agent Selector */}
           <div>
             <label htmlFor="agent" className="block text-sm font-medium text-gray-700">
@@ -286,7 +301,7 @@ export default function LoginPage() {
               name="agent"
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
               value={selectedAgent}
-              onChange={(e) => setSelectedAgent(e.target.value)}
+              onChange={e => setSelectedAgent(e.target.value)}
               disabled={loading || loadingAgents}
             >
               {loadingAgents ? (
@@ -294,7 +309,7 @@ export default function LoginPage() {
               ) : agents.length === 0 ? (
                 <option>No agents available</option>
               ) : (
-                agents.map((agent) => (
+                agents.map(agent => (
                   <option key={agent.agent_id} value={agent.agent_id}>
                     {agent.agent_name} ({agent.status})
                   </option>
@@ -302,30 +317,40 @@ export default function LoginPage() {
               )}
             </select>
             <p className="mt-1 text-xs text-gray-500">
-              Each agent has separate authentication. You'll need to login individually to each agent.
+              Each agent has separate authentication. You'll need to login individually to each
+              agent.
             </p>
           </div>
 
           {/* Login Instructions - Only show for managed/production mode */}
-          {!(agents.length > 0 && agents[0].container_name === 'standalone') && (
+          {!(agents.length > 0 && agents[0].container_name === "standalone") && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  <svg
+                    className="h-5 w-5 text-blue-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-blue-800">
-                    Authentication Required
-                  </h3>
+                  <h3 className="text-sm font-medium text-blue-800">Authentication Required</h3>
                   <div className="mt-2 text-sm text-blue-700">
                     <ul className="list-disc pl-5 space-y-1">
                       <li>
-                        <strong>Log in with a Google account</strong> to observe the production agents
+                        <strong>Log in with a Google account</strong> to observe the production
+                        agents
                       </li>
                       <li>
-                        <strong>Log in with a @ciris.ai email address</strong> to access the admin or manager interfaces
+                        <strong>Log in with a @ciris.ai email address</strong> to access the admin
+                        or manager interfaces
                       </li>
                     </ul>
                   </div>
@@ -335,7 +360,7 @@ export default function LoginPage() {
           )}
 
           {/* Terms and Consent Checkboxes - Only show for managed/production mode */}
-          {!(agents.length > 0 && agents[0].container_name === 'standalone') && (
+          {!(agents.length > 0 && agents[0].container_name === "standalone") && (
             <div className="space-y-4">
               {/* Beta Acknowledgment - Required */}
               <div className="relative flex items-start">
@@ -345,16 +370,22 @@ export default function LoginPage() {
                     name="beta-acknowledgment"
                     type="checkbox"
                     checked={betaAcknowledged}
-                    onChange={(e) => setBetaAcknowledged(e.target.checked)}
+                    onChange={e => setBetaAcknowledged(e.target.checked)}
                     className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded cursor-pointer"
                   />
                 </div>
                 <div className="ml-3 text-sm">
-                  <label htmlFor="beta-acknowledgment" className="font-medium text-gray-700 cursor-pointer">
+                  <label
+                    htmlFor="beta-acknowledgment"
+                    className="font-medium text-gray-700 cursor-pointer"
+                  >
                     <span className="text-red-600">*</span> Beta System Acknowledgment
                   </label>
                   <p className="text-gray-500 text-xs mt-1">
-                    By checking this box you recognize this is a beta system being provided for evaluation purposes only. No sensitive or private data should be entered. All local and international laws apply. Usage restricted to adults and prohibited in countries sanctioned by the USA.
+                    By checking this box you recognize this is a beta system being provided for
+                    evaluation purposes only. No sensitive or private data should be entered. All
+                    local and international laws apply. Usage restricted to adults and prohibited in
+                    countries sanctioned by the USA.
                   </p>
                 </div>
               </div>
@@ -367,12 +398,15 @@ export default function LoginPage() {
                     name="marketing-opt-in"
                     type="checkbox"
                     checked={marketingOptIn}
-                    onChange={(e) => setMarketingOptIn(e.target.checked)}
+                    onChange={e => setMarketingOptIn(e.target.checked)}
                     className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded cursor-pointer"
                   />
                 </div>
                 <div className="ml-3 text-sm">
-                  <label htmlFor="marketing-opt-in" className="font-medium text-gray-700 cursor-pointer">
+                  <label
+                    htmlFor="marketing-opt-in"
+                    className="font-medium text-gray-700 cursor-pointer"
+                  >
                     Marketing Communications
                   </label>
                   <p className="text-gray-500 text-xs mt-1">
@@ -384,7 +418,7 @@ export default function LoginPage() {
           )}
 
           {/* Basic Auth Login Form - Show for local development */}
-          {agents.length > 0 && agents[0].container_name === 'standalone' && (
+          {agents.length > 0 && agents[0].container_name === "standalone" && (
             <form onSubmit={handleBasicLogin} className="space-y-4">
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-700">
@@ -396,13 +430,13 @@ export default function LoginPage() {
                   type="text"
                   required
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={e => setUsername(e.target.value)}
                   className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                   placeholder="Enter username"
                   disabled={loading}
                 />
               </div>
-              
+
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                   Password
@@ -413,13 +447,14 @@ export default function LoginPage() {
                   type="password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                   className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                   placeholder="Enter password"
                   disabled={loading}
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Default credentials: <span className="font-mono font-medium">admin</span> / <span className="font-mono font-medium">ciris_admin_password</span>
+                  Default credentials: <span className="font-mono font-medium">admin</span> /{" "}
+                  <span className="font-mono font-medium">ciris_admin_password</span>
                 </p>
               </div>
 
@@ -428,13 +463,13 @@ export default function LoginPage() {
                 disabled={loading || !username || !password}
                 className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Signing in...' : 'Sign in'}
+                {loading ? "Signing in..." : "Sign in"}
               </button>
             </form>
           )}
 
           {/* OAuth Login Options - Only show for managed/production mode */}
-          {!(agents.length > 0 && agents[0].container_name === 'standalone') && (
+          {!(agents.length > 0 && agents[0].container_name === "standalone") && (
             <>
               <div className="mt-6">
                 <div className="relative">
@@ -442,23 +477,20 @@ export default function LoginPage() {
                     <div className="w-full border-t border-gray-300" />
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-gray-50 text-gray-500">
-                      Sign in with
-                    </span>
+                    <span className="px-2 bg-gray-50 text-gray-500">Sign in with</span>
                   </div>
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 gap-3">
-                  {oauthProviders.map((provider) => (
+                  {oauthProviders.map(provider => (
                     <button
                       key={provider.provider}
                       type="button"
                       onClick={() => handleOAuthLogin(provider.provider)}
                       disabled={agents.length === 0 || !betaAcknowledged}
-                      className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                      <span className="mr-2">
-                        {getProviderIcon(provider.provider)}
-                      </span>
+                      className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span className="mr-2">{getProviderIcon(provider.provider)}</span>
                       {provider.name}
                     </button>
                   ))}
@@ -472,14 +504,22 @@ export default function LoginPage() {
                     href="/lens/"
                     className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 group"
                   >
-                    <svg className="w-4 h-4 mr-2 opacity-70 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    <svg
+                      className="w-4 h-4 mr-2 opacity-70 group-hover:opacity-100 transition-opacity"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
                     </svg>
                     View System Dashboard
                   </a>
-                  <p className="mt-2 text-xs text-gray-500">
-                    Public telemetry and system metrics
-                  </p>
+                  <p className="mt-2 text-xs text-gray-500">Public telemetry and system metrics</p>
                 </div>
               </div>
 
@@ -494,11 +534,26 @@ export default function LoginPage() {
                     onClick={handleManagerGoogleLogin}
                     className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 group"
                   >
-                    <svg className="w-4 h-4 mr-2 opacity-70 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    <svg
+                      className="w-4 h-4 mr-2 opacity-70 group-hover:opacity-100 transition-opacity"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      />
                     </svg>
                     Manager Access
                   </button>
@@ -510,7 +565,7 @@ export default function LoginPage() {
 
         {/* Version indicator for debugging */}
         <div className="mt-4 text-center text-xs text-gray-400">
-          v{SDK_VERSION.version} • {SDK_VERSION.gitHash?.substring(0, 7) || 'dev'}
+          v{SDK_VERSION.version} • {SDK_VERSION.gitHash?.substring(0, 7) || "dev"}
         </div>
       </div>
     </div>
