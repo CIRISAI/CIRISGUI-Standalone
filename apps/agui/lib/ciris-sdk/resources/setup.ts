@@ -67,11 +67,16 @@ export interface AdapterConfig {
 }
 
 export interface SetupCompleteRequest {
-  // LLM Configuration
+  // Primary LLM Configuration
   llm_provider: string;
   llm_api_key: string;
   llm_base_url?: string | null;
   llm_model?: string | null;
+
+  // Backup/Secondary LLM Configuration (Optional)
+  backup_llm_api_key?: string | null;
+  backup_llm_base_url?: string | null;
+  backup_llm_model?: string | null;
 
   // Template Selection
   template_id: string;
@@ -98,10 +103,18 @@ export interface SetupCompleteResponse {
 }
 
 export interface SetupConfigResponse {
+  // Primary LLM Configuration
   llm_provider?: string | null;
   llm_base_url?: string | null;
   llm_model?: string | null;
   llm_api_key_set: boolean;
+
+  // Backup/Secondary LLM Configuration
+  backup_llm_base_url?: string | null;
+  backup_llm_model?: string | null;
+  backup_llm_api_key_set: boolean;
+
+  // Template
   template_id?: string | null;
   enabled_adapters: string[];
   agent_port: number;

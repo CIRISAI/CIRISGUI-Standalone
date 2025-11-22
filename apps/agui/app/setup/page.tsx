@@ -20,13 +20,19 @@ export default function SetupWizard() {
   const [templates, setTemplates] = useState<AgentTemplate[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Form state
+  // Form state - Primary LLM
   const [selectedProvider, setSelectedProvider] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [apiBase, setApiBase] = useState("");
   const [validatingLLM, setValidatingLLM] = useState(false);
   const [llmValid, setLlmValid] = useState(false);
+
+  // Backup/Secondary LLM (Optional)
+  const [enableBackupLLM, setEnableBackupLLM] = useState(false);
+  const [backupApiKey, setBackupApiKey] = useState("");
+  const [backupModel, setBackupModel] = useState("");
+  const [backupApiBase, setBackupApiBase] = useState("");
 
   const [adminPassword, setAdminPassword] = useState("");
   const [adminPasswordConfirm, setAdminPasswordConfirm] = useState("");
@@ -123,6 +129,10 @@ export default function SetupWizard() {
         llm_api_key: apiKey,
         llm_base_url: apiBase || null,
         llm_model: selectedModel || null,
+        // Backup LLM (optional)
+        backup_llm_api_key: enableBackupLLM && backupApiKey ? backupApiKey : null,
+        backup_llm_base_url: enableBackupLLM && backupApiBase ? backupApiBase : null,
+        backup_llm_model: enableBackupLLM && backupModel ? backupModel : null,
         template_id: selectedTemplate || "general",
         enabled_adapters: ["api"], // API adapter is always enabled
         adapter_config: {},
@@ -366,6 +376,78 @@ export default function SetupWizard() {
                   {validatingLLM ? "Testing..." : "Test Connection"}
                 </button>
                 {llmValid && <span className="text-green-600 font-medium">✓ Connected</span>}
+              </div>
+
+              {/* Optional Backup LLM Configuration */}
+              <div className="border-t border-gray-200 pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Backup LLM{" "}
+                      <span className="text-sm font-normal text-gray-500">(Optional)</span>
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Configure a secondary LLM provider for redundancy
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEnableBackupLLM(!enableBackupLLM)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      enableBackupLLM
+                        ? "bg-indigo-100 text-indigo-700"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    {enableBackupLLM ? "Enabled" : "Enable"}
+                  </button>
+                </div>
+
+                {enableBackupLLM && (
+                  <div className="space-y-4 pl-4 border-l-2 border-indigo-200">
+                    {/* Backup API Key */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Backup API Key
+                      </label>
+                      <input
+                        type="password"
+                        value={backupApiKey}
+                        onChange={e => setBackupApiKey(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Backup LLM API key"
+                      />
+                    </div>
+
+                    {/* Backup Model */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Backup Model <span className="text-gray-500">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={backupModel}
+                        onChange={e => setBackupModel(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Model name"
+                      />
+                    </div>
+
+                    {/* Backup Base URL */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Backup Base URL <span className="text-gray-500">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={backupApiBase}
+                        onChange={e => setBackupApiBase(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="https://api.openai.com/v1"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button
