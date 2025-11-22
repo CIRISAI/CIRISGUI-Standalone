@@ -31,8 +31,8 @@ export default function LoginPage() {
         const response = await cirisClient.setup.getStatus();
 
         if (response.data.setup_required) {
-          // Redirect to setup wizard
-          router.push("/setup");
+          // Redirect to setup wizard (use window.location for static export)
+          window.location.href = "/setup";
           return;
         }
 
