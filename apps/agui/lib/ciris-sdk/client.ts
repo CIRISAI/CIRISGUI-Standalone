@@ -1,22 +1,23 @@
 // CIRIS TypeScript SDK - Main Client
 
-import { Transport, TransportOptions } from './transport';
-import { AuthResource } from './resources/auth';
-import { AgentResource } from './resources/agent';
-import { SystemResource } from './resources/system';
-import { MemoryResource } from './resources/memory';
-import { AuditResource } from './resources/audit';
-import { ConfigResource } from './resources/config';
-import { TelemetryResource } from './resources/telemetry';
-import { WiseAuthorityResource } from './resources/wise-authority';
-import { EmergencyResource } from './resources/emergency';
-import { UsersResource } from './resources/users';
-import { ManagerResource } from './resources/manager';
-import { ConsentResource } from './resources/consent';
-import { DSARResource } from './resources/dsar';
-import { BillingResource } from './resources/billing';
-import { User } from './types';
-import { SDK_VERSION } from './version';
+import { Transport, TransportOptions } from "./transport";
+import { AuthResource } from "./resources/auth";
+import { AgentResource } from "./resources/agent";
+import { SystemResource } from "./resources/system";
+import { MemoryResource } from "./resources/memory";
+import { AuditResource } from "./resources/audit";
+import { ConfigResource } from "./resources/config";
+import { TelemetryResource } from "./resources/telemetry";
+import { WiseAuthorityResource } from "./resources/wise-authority";
+import { EmergencyResource } from "./resources/emergency";
+import { UsersResource } from "./resources/users";
+import { ManagerResource } from "./resources/manager";
+import { ConsentResource } from "./resources/consent";
+import { DSARResource } from "./resources/dsar";
+import { BillingResource } from "./resources/billing";
+import { SetupResource } from "./resources/setup";
+import { User } from "./types";
+import { SDK_VERSION } from "./version";
 
 export interface CIRISClientOptions {
   baseURL?: string;
@@ -44,23 +45,24 @@ export class CIRISClient {
   public readonly consent: ConsentResource;
   public readonly dsar: DSARResource;
   public readonly billing: BillingResource;
+  public readonly setup: SetupResource;
 
   constructor(options: CIRISClientOptions = {}) {
     // Determine the default base URL based on environment
     let defaultBaseURL: string;
-    
-    if (typeof window !== 'undefined') {
+
+    if (typeof window !== "undefined") {
       // Client-side
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
         // Development: use environment variable or default
-        defaultBaseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+        defaultBaseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
       } else {
         // Production: use relative path (same origin) to avoid CORS
-        defaultBaseURL = '';
+        defaultBaseURL = "";
       }
     } else {
       // Server-side: use environment variable or localhost
-      defaultBaseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      defaultBaseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
     }
 
     const transportOptions: TransportOptions = {
@@ -68,12 +70,14 @@ export class CIRISClient {
       timeout: options.timeout,
       maxRetries: options.maxRetries,
       enableRateLimiting: options.enableRateLimiting !== false, // Default true
-      onAuthError: options.onAuthError || (() => {
-        // Default behavior: redirect to login
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
-      })
+      onAuthError:
+        options.onAuthError ||
+        (() => {
+          // Default behavior: redirect to login
+          if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+            window.location.href = "/login";
+          }
+        }),
     };
 
     this.transport = new Transport(transportOptions);
@@ -93,6 +97,7 @@ export class CIRISClient {
     this.consent = new ConsentResource(this.transport);
     this.dsar = new DSARResource(this.transport);
     this.billing = new BillingResource(this.transport);
+    this.setup = new SetupResource(this.transport);
   }
 
   /**
@@ -172,7 +177,7 @@ export class CIRISClient {
       timeout: options.timeout,
       maxRetries: options.maxRetries,
       enableRateLimiting: options.enableRateLimiting,
-      onAuthError: options.onAuthError
+      onAuthError: options.onAuthError,
     };
 
     const newClient = new CIRISClient(newOptions);
@@ -186,7 +191,10 @@ export class CIRISClient {
   /**
    * Send a message to the agent (convenience method)
    */
-  async interact(message: string, options?: { channel_id?: string; context?: Record<string, any> }) {
+  async interact(
+    message: string,
+    options?: { channel_id?: string; context?: Record<string, any> }
+  ) {
     return this.agent.interact(message, options);
   }
 
@@ -210,30 +218,30 @@ export class CIRISClient {
 const createDefaultClient = () => {
   // For browser environments, use relative path in production to avoid CORS
   let baseURL: string;
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     // Client-side
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
       // Development: use environment variable or default
-      baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
     } else {
       // Production: use relative path (same origin)
-      baseURL = '';
+      baseURL = "";
     }
   } else {
     // Server-side
-    baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+    baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
   }
-  
-  console.log('[CIRIS SDK] Creating default client with baseURL:', baseURL);
-  
+
+  console.log("[CIRIS SDK] Creating default client with baseURL:", baseURL);
+
   return new CIRISClient({ baseURL });
 };
 
 export const cirisClient = createDefaultClient();
 
 // Export everything for advanced usage
-export * from './types';
-export * from './exceptions';
-export * from './auth-store';
-export * from './rate-limiter';
-export * from './transport';
+export * from "./types";
+export * from "./exceptions";
+export * from "./auth-store";
+export * from "./rate-limiter";
+export * from "./transport";

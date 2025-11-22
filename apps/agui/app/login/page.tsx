@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../../contexts/AuthContext";
 import { cirisClient } from "../../lib/ciris-sdk";
 import type { AgentInfo } from "../../lib/ciris-sdk";
@@ -8,27 +9,47 @@ import { SDK_VERSION } from "../../lib/ciris-sdk/version";
 import LogoIcon from "../../components/ui/floating/LogoIcon";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [checkingSetup, setCheckingSetup] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const { login } = useAuth();
   const hasInitialized = useRef(false);
 
-  // Initialize SDK for standalone mode
+  // Check if setup is complete and redirect if needed
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || window.location.origin;
-    cirisClient.setConfig({ baseURL: apiBaseUrl });
+    const checkSetup = async () => {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || window.location.origin;
+      cirisClient.setConfig({ baseURL: apiBaseUrl });
 
-    // Store default agent info for auth context
-    localStorage.setItem("selectedAgentId", "datum");
-    localStorage.setItem("selectedAgentName", "CIRIS Agent");
+      try {
+        const status = await cirisClient.setup.getStatus();
 
-    console.log("Standalone login initialized with API:", apiBaseUrl);
-  }, []);
+        if (!status.setup_complete) {
+          // Redirect to setup wizard
+          router.push("/setup");
+          return;
+        }
+
+        // Setup is complete, continue with login
+        localStorage.setItem("selectedAgentId", "datum");
+        localStorage.setItem("selectedAgentName", "CIRIS Agent");
+        console.log("Standalone login initialized with API:", apiBaseUrl);
+      } catch (error) {
+        console.error("Failed to check setup status:", error);
+        // If the endpoint doesn't exist, assume setup is complete (backward compatibility)
+      } finally {
+        setCheckingSetup(false);
+      }
+    };
+
+    checkSetup();
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +66,18 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  // Show loading while checking setup status
+  if (checkingSetup) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <LogoIcon className="mx-auto h-12 w-auto text-brand-primary fill-brand-primary animate-pulse" />
+          <p className="mt-4 text-gray-600">Checking setup status...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
