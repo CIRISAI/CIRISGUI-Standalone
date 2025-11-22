@@ -161,7 +161,6 @@ export default function SetupWizard() {
         <div className="text-center mb-8">
           <LogoIcon className="mx-auto h-16 w-auto text-brand-primary fill-brand-primary mb-4" />
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome to CIRIS</h1>
-          <p className="text-gray-600">Cognitive Integrity through Recursive Information Systems</p>
         </div>
 
         {/* Progress indicator */}
