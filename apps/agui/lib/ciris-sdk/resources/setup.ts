@@ -2,11 +2,14 @@
 
 import { BaseResource } from "./base";
 
-// Generic success response wrapper
+// Generic success response wrapper (matches backend schema)
 export interface SuccessResponse<T> {
-  success: boolean;
   data: T;
-  timestamp: string;
+  metadata: {
+    timestamp: string;
+    request_id: string | null;
+    duration_ms: number | null;
+  };
 }
 
 export interface SetupStatusResponse {
