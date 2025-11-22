@@ -47,10 +47,10 @@ export default function SetupWizard() {
         cirisClient.setup.getProviders(),
         cirisClient.setup.getTemplates(),
       ]);
-      setProviders(providersRes.providers);
-      setTemplates(templatesRes.templates);
-      if (providersRes.providers.length > 0) {
-        setSelectedProvider(providersRes.providers[0].provider);
+      setProviders(providersRes.data);
+      setTemplates(templatesRes.data);
+      if (providersRes.data.length > 0) {
+        setSelectedProvider(providersRes.data[0].id);
       }
     } catch (error) {
       console.error("Failed to load setup data:", error);
@@ -59,26 +59,40 @@ export default function SetupWizard() {
   };
 
   const validateLLM = async () => {
-    if (!selectedProvider || !apiKey) {
-      toast.error("Please select a provider and enter an API key");
+    if (!selectedProvider) {
+      toast.error("Please select a provider");
+      return;
+    }
+
+    const currentProvider = providers.find(p => p.id === selectedProvider);
+    if (currentProvider?.requires_api_key && !apiKey) {
+      toast.error("API key is required for this provider");
+      return;
+    }
+    if (currentProvider?.requires_base_url && !apiBase) {
+      toast.error("Base URL is required for this provider");
+      return;
+    }
+    if (currentProvider?.requires_model && !selectedModel) {
+      toast.error("Model name is required for this provider");
       return;
     }
 
     setValidatingLLM(true);
     try {
-      const result = await cirisClient.setup.validateLLM({
+      const response = await cirisClient.setup.validateLLM({
         provider: selectedProvider,
         api_key: apiKey,
-        model: selectedModel || undefined,
-        api_base: apiBase || undefined,
+        base_url: apiBase || null,
+        model: selectedModel || null,
       });
 
-      if (result.valid) {
+      if (response.data.valid) {
         setLlmValid(true);
-        toast.success(result.message || "LLM configuration validated!");
+        toast.success(response.data.message || "LLM configuration validated!");
       } else {
         setLlmValid(false);
-        toast.error(result.error || "LLM validation failed");
+        toast.error(response.data.error || "LLM validation failed");
       }
     } catch (error: any) {
       setLlmValid(false);
@@ -107,15 +121,19 @@ export default function SetupWizard() {
       const config: SetupCompleteRequest = {
         llm_provider: selectedProvider,
         llm_api_key: apiKey,
-        llm_model: selectedModel || undefined,
-        llm_api_base: apiBase || undefined,
-        admin_password: adminPassword,
-        username,
-        password,
-        agent_template: selectedTemplate || undefined,
+        llm_base_url: apiBase || null,
+        llm_model: selectedModel || null,
+        template_id: selectedTemplate || "general",
+        enabled_adapters: ["api"], // API adapter is always enabled
+        adapter_config: {},
+        admin_username: username,
+        admin_password: password,
+        system_admin_password: adminPassword, // Update default admin password
+        agent_port: 8080,
       };
 
-      await cirisClient.setup.complete(config);
+      const response = await cirisClient.setup.complete(config);
+      console.log("Setup complete:", response.data.message);
       setCurrentStep("complete");
     } catch (error: any) {
       toast.error(error.message || "Setup failed");
@@ -124,7 +142,7 @@ export default function SetupWizard() {
     }
   };
 
-  const provider = providers.find(p => p.provider === selectedProvider);
+  const provider = providers.find(p => p.id === selectedProvider);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col items-center justify-center p-4">
@@ -249,92 +267,100 @@ export default function SetupWizard() {
                 <div className="grid grid-cols-2 gap-4">
                   {providers.map(p => (
                     <button
-                      key={p.provider}
+                      key={p.id}
                       onClick={() => {
-                        setSelectedProvider(p.provider);
+                        setSelectedProvider(p.id);
                         setLlmValid(false);
                       }}
                       className={`p-4 border-2 rounded-lg text-left transition-all ${
-                        selectedProvider === p.provider
+                        selectedProvider === p.id
                           ? "border-indigo-600 bg-indigo-50"
                           : "border-gray-200 hover:border-gray-300"
                       }`}
                     >
                       <div className="font-semibold text-gray-900">{p.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {p.models.length} models available
-                      </div>
+                      <div className="text-xs text-gray-500 mt-1">{p.description}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* API Key */}
-              <div>
-                <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-2">
-                  API Key
-                </label>
-                <input
-                  id="apiKey"
-                  type="password"
-                  value={apiKey}
-                  onChange={e => {
-                    setApiKey(e.target.value);
-                    setLlmValid(false);
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="sk-..."
-                />
-              </div>
+              {provider && provider.requires_api_key && (
+                <div>
+                  <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-2">
+                    API Key <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="apiKey"
+                    type="password"
+                    value={apiKey}
+                    onChange={e => {
+                      setApiKey(e.target.value);
+                      setLlmValid(false);
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="sk-..."
+                    required
+                  />
+                </div>
+              )}
 
-              {/* Model selection */}
-              {provider && provider.models.length > 0 && (
+              {/* Model input */}
+              {provider && provider.requires_model && (
                 <div>
                   <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
-                    Model (optional)
+                    Model Name {provider.requires_model && <span className="text-red-500">*</span>}
                   </label>
-                  <select
+                  <input
                     id="model"
+                    type="text"
                     value={selectedModel}
                     onChange={e => {
                       setSelectedModel(e.target.value);
                       setLlmValid(false);
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="">Default model</option>
-                    {provider.models.map(model => (
-                      <option key={model} value={model}>
-                        {model}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder={provider.default_model || "Enter model name"}
+                  />
+                  {provider.examples.length > 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Examples: {provider.examples.slice(0, 2).join(", ")}
+                    </p>
+                  )}
                 </div>
               )}
 
-              {/* API Base (optional) */}
-              <div>
-                <label htmlFor="apiBase" className="block text-sm font-medium text-gray-700 mb-2">
-                  API Base URL (optional)
-                </label>
-                <input
-                  id="apiBase"
-                  type="text"
-                  value={apiBase}
-                  onChange={e => {
-                    setApiBase(e.target.value);
-                    setLlmValid(false);
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="https://api.openai.com/v1"
-                />
-              </div>
+              {/* API Base URL */}
+              {provider && provider.requires_base_url && (
+                <div>
+                  <label htmlFor="apiBase" className="block text-sm font-medium text-gray-700 mb-2">
+                    API Base URL{" "}
+                    {provider.requires_base_url && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    id="apiBase"
+                    type="text"
+                    value={apiBase}
+                    onChange={e => {
+                      setApiBase(e.target.value);
+                      setLlmValid(false);
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder={provider.default_base_url || "http://localhost:11434"}
+                    required={provider.requires_base_url}
+                  />
+                  {provider.examples.length > 0 && (
+                    <p className="mt-1 text-xs text-gray-500">{provider.examples[0]}</p>
+                  )}
+                </div>
+              )}
 
               {/* Validation */}
               <div className="flex items-center space-x-4">
                 <button
                   onClick={validateLLM}
-                  disabled={validatingLLM || !apiKey}
+                  disabled={validatingLLM || !selectedProvider}
                   className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {validatingLLM ? "Testing..." : "Test Connection"}
@@ -501,10 +527,10 @@ export default function SetupWizard() {
               <div className="space-y-4">
                 {templates.map(template => (
                   <button
-                    key={template.template_id}
-                    onClick={() => setSelectedTemplate(template.template_id)}
+                    key={template.id}
+                    onClick={() => setSelectedTemplate(template.id)}
                     className={`w-full p-6 border-2 rounded-lg text-left transition-all ${
-                      selectedTemplate === template.template_id
+                      selectedTemplate === template.id
                         ? "border-indigo-600 bg-indigo-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
@@ -514,18 +540,27 @@ export default function SetupWizard() {
                         <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
                         <p className="text-sm text-gray-600 mt-1">{template.description}</p>
                       </div>
-                      {selectedTemplate === template.template_id && (
+                      {selectedTemplate === template.id && (
                         <span className="text-indigo-600 text-xl">✓</span>
                       )}
                     </div>
 
-                    {template.recommended_for.length > 0 && (
+                    {template.identity && (
                       <div className="mb-3">
                         <div className="text-xs font-medium text-gray-700 mb-1">
-                          Recommended for:
+                          Agent Identity:
+                        </div>
+                        <p className="text-xs text-gray-600 italic">"{template.identity}"</p>
+                      </div>
+                    )}
+
+                    {template.example_use_cases.length > 0 && (
+                      <div>
+                        <div className="text-xs font-medium text-gray-700 mb-1">
+                          Example Use Cases:
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {template.recommended_for.map(use => (
+                          {template.example_use_cases.map(use => (
                             <span
                               key={use}
                               className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full"
@@ -534,27 +569,6 @@ export default function SetupWizard() {
                             </span>
                           ))}
                         </div>
-                      </div>
-                    )}
-
-                    {template.sops.length > 0 && (
-                      <div>
-                        <div className="text-xs font-medium text-gray-700 mb-2">
-                          Includes {template.sops.length} SOPs:
-                        </div>
-                        <ul className="space-y-1">
-                          {template.sops.slice(0, 3).map((sop, idx) => (
-                            <li key={idx} className="text-xs text-gray-600 flex items-start">
-                              <span className="text-indigo-600 mr-2">•</span>
-                              {sop}
-                            </li>
-                          ))}
-                          {template.sops.length > 3 && (
-                            <li className="text-xs text-gray-500 italic">
-                              + {template.sops.length - 3} more...
-                            </li>
-                          )}
-                        </ul>
                       </div>
                     )}
                   </button>

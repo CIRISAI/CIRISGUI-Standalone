@@ -2,58 +2,101 @@
 
 import { BaseResource } from "./base";
 
-export interface SetupStatus {
-  setup_complete: boolean;
-  first_run: boolean;
-  setup_required?: string[];
+// Generic success response wrapper
+export interface SuccessResponse<T> {
+  success: boolean;
+  data: T;
+  timestamp: string;
+}
+
+export interface SetupStatusResponse {
+  is_first_run: boolean;
+  config_exists: boolean;
+  config_path: string | null;
+  setup_required: boolean;
 }
 
 export interface LLMProvider {
-  provider: string;
+  id: string;
   name: string;
-  models: string[];
-  env_vars_required: string[];
-  supports_streaming: boolean;
+  description: string;
+  requires_api_key: boolean;
+  requires_base_url: boolean;
+  requires_model: boolean;
+  default_base_url: string | null;
+  default_model: string | null;
+  examples: string[];
 }
 
 export interface LLMValidationRequest {
   provider: string;
   api_key: string;
-  model?: string;
-  api_base?: string;
+  base_url?: string | null;
+  model?: string | null;
 }
 
 export interface LLMValidationResponse {
   valid: boolean;
   message: string;
-  model_tested?: string;
-  error?: string;
+  error?: string | null;
 }
 
 export interface AgentTemplate {
-  template_id: string;
+  id: string;
   name: string;
   description: string;
-  sops: string[];
-  recommended_for: string[];
+  identity: string;
+  example_use_cases: string[];
+}
+
+export interface AdapterConfig {
+  id: string;
+  name: string;
+  description: string;
+  enabled_by_default: boolean;
+  required_env_vars: string[];
+  optional_env_vars: string[];
 }
 
 export interface SetupCompleteRequest {
+  // LLM Configuration
   llm_provider: string;
   llm_api_key: string;
-  llm_model?: string;
-  llm_api_base?: string;
+  llm_base_url?: string | null;
+  llm_model?: string | null;
+
+  // Template Selection
+  template_id: string;
+
+  // Adapter Configuration
+  enabled_adapters: string[];
+  adapter_config: Record<string, any>;
+
+  // Dual Password System
+  admin_username: string;
   admin_password: string;
-  username: string;
-  password: string;
-  agent_template?: string;
+  system_admin_password?: string | null;
+
+  // Application Configuration
+  agent_port: number;
 }
 
 export interface SetupCompleteResponse {
-  success: boolean;
+  status: string;
   message: string;
-  admin_user_id: string;
-  user_id: string;
+  config_path: string;
+  username: string;
+  next_steps: string;
+}
+
+export interface SetupConfigResponse {
+  llm_provider?: string | null;
+  llm_base_url?: string | null;
+  llm_model?: string | null;
+  llm_api_key_set: boolean;
+  template_id?: string | null;
+  enabled_adapters: string[];
+  agent_port: number;
 }
 
 /**
@@ -70,8 +113,8 @@ export class SetupResource extends BaseResource {
    *
    * @returns Setup status
    */
-  async getStatus(): Promise<SetupStatus> {
-    return this.transport.get<SetupStatus>("/v1/setup/status");
+  async getStatus(): Promise<SuccessResponse<SetupStatusResponse>> {
+    return this.transport.get<SuccessResponse<SetupStatusResponse>>("/v1/setup/status");
   }
 
   /**
@@ -81,8 +124,8 @@ export class SetupResource extends BaseResource {
    *
    * @returns List of LLM providers
    */
-  async getProviders(): Promise<{ providers: LLMProvider[] }> {
-    return this.transport.get<{ providers: LLMProvider[] }>("/v1/setup/providers");
+  async getProviders(): Promise<SuccessResponse<LLMProvider[]>> {
+    return this.transport.get<SuccessResponse<LLMProvider[]>>("/v1/setup/providers");
   }
 
   /**
@@ -93,30 +136,76 @@ export class SetupResource extends BaseResource {
    * @param config - LLM configuration to validate
    * @returns Validation result
    */
-  async validateLLM(config: LLMValidationRequest): Promise<LLMValidationResponse> {
-    return this.transport.post<LLMValidationResponse>("/v1/setup/validate-llm", config);
+  async validateLLM(config: LLMValidationRequest): Promise<SuccessResponse<LLMValidationResponse>> {
+    return this.transport.post<SuccessResponse<LLMValidationResponse>>(
+      "/v1/setup/validate-llm",
+      config
+    );
   }
 
   /**
    * Get available agent templates
    *
-   * Returns list of pre-configured agent templates with their SOPs.
+   * Returns list of pre-configured agent templates with their identities and use cases.
    *
    * @returns List of agent templates
    */
-  async getTemplates(): Promise<{ templates: AgentTemplate[] }> {
-    return this.transport.get<{ templates: AgentTemplate[] }>("/v1/setup/templates");
+  async getTemplates(): Promise<SuccessResponse<AgentTemplate[]>> {
+    return this.transport.get<SuccessResponse<AgentTemplate[]>>("/v1/setup/templates");
+  }
+
+  /**
+   * Get available communication adapters
+   *
+   * Returns list of available adapters (API, CLI, Discord, Reddit, etc.)
+   * with their configuration requirements.
+   *
+   * @returns List of adapter configurations
+   */
+  async getAdapters(): Promise<SuccessResponse<AdapterConfig[]>> {
+    return this.transport.get<SuccessResponse<AdapterConfig[]>>("/v1/setup/adapters");
   }
 
   /**
    * Complete setup wizard
    *
-   * Saves configuration, creates admin user, and creates first user account.
+   * Saves configuration, creates new admin user, and optionally updates
+   * system admin password. Only accessible during first-run.
    *
-   * @param config - Complete setup configuration
-   * @returns Setup result with user IDs
+   * @param config - Complete setup configuration including dual password system
+   * @returns Setup result with next steps
    */
-  async complete(config: SetupCompleteRequest): Promise<SetupCompleteResponse> {
-    return this.transport.post<SetupCompleteResponse>("/v1/setup/complete", config);
+  async complete(config: SetupCompleteRequest): Promise<SuccessResponse<SetupCompleteResponse>> {
+    return this.transport.post<SuccessResponse<SetupCompleteResponse>>(
+      "/v1/setup/complete",
+      config
+    );
+  }
+
+  /**
+   * Get current configuration
+   *
+   * Returns current configuration for editing/viewing.
+   * Requires admin authentication if setup is already complete.
+   *
+   * @returns Current configuration (API key never returned, only llm_api_key_set flag)
+   */
+  async getConfig(): Promise<SuccessResponse<SetupConfigResponse>> {
+    return this.transport.get<SuccessResponse<SetupConfigResponse>>("/v1/setup/config");
+  }
+
+  /**
+   * Update configuration
+   *
+   * Updates configuration after initial setup. Requires admin authentication.
+   * Agent must be restarted after config update.
+   *
+   * @param config - Updated configuration
+   * @returns Update result with next steps
+   */
+  async updateConfig(
+    config: SetupCompleteRequest
+  ): Promise<SuccessResponse<SetupCompleteResponse>> {
+    return this.transport.put<SuccessResponse<SetupCompleteResponse>>("/v1/setup/config", config);
   }
 }

@@ -28,9 +28,9 @@ export default function LoginPage() {
       cirisClient.setConfig({ baseURL: apiBaseUrl });
 
       try {
-        const status = await cirisClient.setup.getStatus();
+        const response = await cirisClient.setup.getStatus();
 
-        if (!status.setup_complete) {
+        if (response.data.setup_required) {
           // Redirect to setup wizard
           router.push("/setup");
           return;
