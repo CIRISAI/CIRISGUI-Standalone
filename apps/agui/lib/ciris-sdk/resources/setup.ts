@@ -48,6 +48,10 @@ export interface AgentTemplate {
   identity: string;
   example_use_cases: string[];
   supported_sops: string[];
+  // Book VI Stewardship
+  stewardship_tier: number; // 1-5, higher = more oversight
+  creator_id: string;
+  signature: string;
 }
 
 export interface AdapterConfig {

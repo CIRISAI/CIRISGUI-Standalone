@@ -536,9 +536,32 @@ export default function SetupWizard() {
                     }`}
                   >
                     <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
+                          <span
+                            className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                              template.stewardship_tier <= 2
+                                ? "bg-green-100 text-green-800"
+                                : template.stewardship_tier <= 3
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-orange-100 text-orange-800"
+                            }`}
+                            title={`Stewardship Tier ${template.stewardship_tier}/5 - ${
+                              template.stewardship_tier <= 2
+                                ? "Low oversight"
+                                : template.stewardship_tier <= 3
+                                  ? "Moderate oversight"
+                                  : "High oversight"
+                            }`}
+                          >
+                            Tier {template.stewardship_tier}
+                          </span>
+                        </div>
                         <p className="text-sm text-gray-600 mt-1">{template.description}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Signed by: {template.creator_id}
+                        </p>
                       </div>
                       {selectedTemplate === template.id && (
                         <span className="text-indigo-600 text-xl">✓</span>
