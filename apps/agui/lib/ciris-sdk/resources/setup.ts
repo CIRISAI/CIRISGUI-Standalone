@@ -47,6 +47,7 @@ export interface AgentTemplate {
   description: string;
   identity: string;
   example_use_cases: string[];
+  supported_sops: string[];
 }
 
 export interface AdapterConfig {

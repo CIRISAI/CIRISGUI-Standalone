@@ -555,7 +555,7 @@ export default function SetupWizard() {
                     )}
 
                     {template.example_use_cases.length > 0 && (
-                      <div>
+                      <div className="mb-3">
                         <div className="text-xs font-medium text-gray-700 mb-1">
                           Example Use Cases:
                         </div>
@@ -569,6 +569,27 @@ export default function SetupWizard() {
                             </span>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {template.supported_sops && template.supported_sops.length > 0 && (
+                      <div>
+                        <div className="text-xs font-medium text-gray-700 mb-2">
+                          Supported SOPs ({template.supported_sops.length}):
+                        </div>
+                        <ul className="space-y-1">
+                          {template.supported_sops.slice(0, 3).map((sop, idx) => (
+                            <li key={idx} className="text-xs text-gray-600 flex items-start">
+                              <span className="text-indigo-600 mr-2">•</span>
+                              {sop}
+                            </li>
+                          ))}
+                          {template.supported_sops.length > 3 && (
+                            <li className="text-xs text-gray-500 italic">
+                              + {template.supported_sops.length - 3} more...
+                            </li>
+                          )}
+                        </ul>
                       </div>
                     )}
                   </button>
