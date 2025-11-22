@@ -134,8 +134,8 @@ export class SetupResource extends BaseResource {
    *
    * @returns Setup status
    */
-  async getStatus(): Promise<SuccessResponse<SetupStatusResponse>> {
-    return this.transport.get<SuccessResponse<SetupStatusResponse>>("/v1/setup/status");
+  async getStatus(): Promise<SetupStatusResponse> {
+    return this.transport.get<SetupStatusResponse>("/v1/setup/status");
   }
 
   /**
@@ -145,8 +145,8 @@ export class SetupResource extends BaseResource {
    *
    * @returns List of LLM providers
    */
-  async getProviders(): Promise<SuccessResponse<LLMProvider[]>> {
-    return this.transport.get<SuccessResponse<LLMProvider[]>>("/v1/setup/providers");
+  async getProviders(): Promise<LLMProvider[]> {
+    return this.transport.get<LLMProvider[]>("/v1/setup/providers");
   }
 
   /**
@@ -157,11 +157,8 @@ export class SetupResource extends BaseResource {
    * @param config - LLM configuration to validate
    * @returns Validation result
    */
-  async validateLLM(config: LLMValidationRequest): Promise<SuccessResponse<LLMValidationResponse>> {
-    return this.transport.post<SuccessResponse<LLMValidationResponse>>(
-      "/v1/setup/validate-llm",
-      config
-    );
+  async validateLLM(config: LLMValidationRequest): Promise<LLMValidationResponse> {
+    return this.transport.post<LLMValidationResponse>("/v1/setup/validate-llm", config);
   }
 
   /**
@@ -171,8 +168,8 @@ export class SetupResource extends BaseResource {
    *
    * @returns List of agent templates
    */
-  async getTemplates(): Promise<SuccessResponse<AgentTemplate[]>> {
-    return this.transport.get<SuccessResponse<AgentTemplate[]>>("/v1/setup/templates");
+  async getTemplates(): Promise<AgentTemplate[]> {
+    return this.transport.get<AgentTemplate[]>("/v1/setup/templates");
   }
 
   /**
@@ -183,8 +180,8 @@ export class SetupResource extends BaseResource {
    *
    * @returns List of adapter configurations
    */
-  async getAdapters(): Promise<SuccessResponse<AdapterConfig[]>> {
-    return this.transport.get<SuccessResponse<AdapterConfig[]>>("/v1/setup/adapters");
+  async getAdapters(): Promise<AdapterConfig[]> {
+    return this.transport.get<AdapterConfig[]>("/v1/setup/adapters");
   }
 
   /**
@@ -196,11 +193,8 @@ export class SetupResource extends BaseResource {
    * @param config - Complete setup configuration including dual password system
    * @returns Setup result with next steps
    */
-  async complete(config: SetupCompleteRequest): Promise<SuccessResponse<SetupCompleteResponse>> {
-    return this.transport.post<SuccessResponse<SetupCompleteResponse>>(
-      "/v1/setup/complete",
-      config
-    );
+  async complete(config: SetupCompleteRequest): Promise<SetupCompleteResponse> {
+    return this.transport.post<SetupCompleteResponse>("/v1/setup/complete", config);
   }
 
   /**
@@ -211,8 +205,8 @@ export class SetupResource extends BaseResource {
    *
    * @returns Current configuration (API key never returned, only llm_api_key_set flag)
    */
-  async getConfig(): Promise<SuccessResponse<SetupConfigResponse>> {
-    return this.transport.get<SuccessResponse<SetupConfigResponse>>("/v1/setup/config");
+  async getConfig(): Promise<SetupConfigResponse> {
+    return this.transport.get<SetupConfigResponse>("/v1/setup/config");
   }
 
   /**
@@ -224,9 +218,7 @@ export class SetupResource extends BaseResource {
    * @param config - Updated configuration
    * @returns Update result with next steps
    */
-  async updateConfig(
-    config: SetupCompleteRequest
-  ): Promise<SuccessResponse<SetupCompleteResponse>> {
-    return this.transport.put<SuccessResponse<SetupCompleteResponse>>("/v1/setup/config", config);
+  async updateConfig(config: SetupCompleteRequest): Promise<SetupCompleteResponse> {
+    return this.transport.put<SetupCompleteResponse>("/v1/setup/config", config);
   }
 }

@@ -53,10 +53,10 @@ export default function SetupWizard() {
         cirisClient.setup.getProviders(),
         cirisClient.setup.getTemplates(),
       ]);
-      setProviders(providersRes.data);
-      setTemplates(templatesRes.data);
-      if (providersRes.data.length > 0) {
-        setSelectedProvider(providersRes.data[0].id);
+      setProviders(providersRes);
+      setTemplates(templatesRes);
+      if (providersRes.length > 0) {
+        setSelectedProvider(providersRes[0].id);
       }
     } catch (error) {
       console.error("Failed to load setup data:", error);
@@ -93,12 +93,12 @@ export default function SetupWizard() {
         model: selectedModel || null,
       });
 
-      if (response.data.valid) {
+      if (response.valid) {
         setLlmValid(true);
-        toast.success(response.data.message || "LLM configuration validated!");
+        toast.success(response.message || "LLM configuration validated!");
       } else {
         setLlmValid(false);
-        toast.error(response.data.error || "LLM validation failed");
+        toast.error(response.error || "LLM validation failed");
       }
     } catch (error: any) {
       setLlmValid(false);
@@ -143,7 +143,7 @@ export default function SetupWizard() {
       };
 
       const response = await cirisClient.setup.complete(config);
-      console.log("Setup complete:", response.data.message);
+      console.log("Setup complete:", response.message);
       setCurrentStep("complete");
     } catch (error: any) {
       toast.error(error.message || "Setup failed");
