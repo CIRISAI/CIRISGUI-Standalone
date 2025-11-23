@@ -605,102 +605,202 @@ export default function SetupWizard() {
                 pre-configured SOPs (Standard Operating Procedures).
               </p>
 
-              <div className="space-y-4">
-                {templates.map(template => (
-                  <button
-                    key={template.id}
-                    onClick={() => setSelectedTemplate(template.id)}
-                    className={`w-full p-6 border-2 rounded-lg text-left transition-all ${
-                      selectedTemplate === template.id
-                        ? "border-indigo-600 bg-indigo-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
-                          <span
-                            className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                              template.stewardship_tier <= 2
-                                ? "bg-green-100 text-green-800"
-                                : template.stewardship_tier <= 3
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-orange-100 text-orange-800"
-                            }`}
-                            title={`Stewardship Tier ${template.stewardship_tier}/5 - ${
-                              template.stewardship_tier <= 2
-                                ? "Low oversight"
-                                : template.stewardship_tier <= 3
-                                  ? "Moderate oversight"
-                                  : "High oversight"
+              {/* Template Categories */}
+              <div className="space-y-6">
+                {/* Demo/Customer Service */}
+                {templates.filter(t => t.id === "scout").length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                      Demo / Customer Service
+                    </h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      {templates
+                        .filter(t => t.id === "scout")
+                        .map(template => (
+                          <button
+                            key={template.id}
+                            onClick={() => setSelectedTemplate(template.id)}
+                            className={`p-4 sm:p-5 border-2 rounded-lg text-left transition-all ${
+                              selectedTemplate === template.id
+                                ? "border-indigo-600 bg-indigo-50"
+                                : "border-gray-200 hover:border-gray-300"
                             }`}
                           >
-                            Tier {template.stewardship_tier}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Signed by: {template.creator_id}
-                        </p>
-                      </div>
-                      {selectedTemplate === template.id && (
-                        <span className="text-indigo-600 text-xl">✓</span>
-                      )}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-base sm:text-lg font-semibold text-gray-900">
+                                    {template.name}
+                                  </h4>
+                                  <span
+                                    className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800"
+                                    title={`Stewardship Tier ${template.stewardship_tier}/5`}
+                                  >
+                                    Tier {template.stewardship_tier}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">{template.description}</p>
+                              </div>
+                              {selectedTemplate === template.id && (
+                                <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
                     </div>
+                  </div>
+                )}
 
-                    {template.identity && (
-                      <div className="mb-3">
-                        <div className="text-xs font-medium text-gray-700 mb-1">
-                          Agent Identity:
-                        </div>
-                        <p className="text-xs text-gray-600 italic">"{template.identity}"</p>
-                      </div>
-                    )}
+                {/* Research */}
+                {templates.filter(t => t.id === "datum").length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Research</h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      {templates
+                        .filter(t => t.id === "datum")
+                        .map(template => (
+                          <button
+                            key={template.id}
+                            onClick={() => setSelectedTemplate(template.id)}
+                            className={`p-4 sm:p-5 border-2 rounded-lg text-left transition-all ${
+                              selectedTemplate === template.id
+                                ? "border-indigo-600 bg-indigo-50"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-base sm:text-lg font-semibold text-gray-900">
+                                    {template.name}
+                                  </h4>
+                                  <span
+                                    className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800"
+                                    title={`Stewardship Tier ${template.stewardship_tier}/5`}
+                                  >
+                                    Tier {template.stewardship_tier}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">{template.description}</p>
+                              </div>
+                              {selectedTemplate === template.id && (
+                                <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
-                    {template.example_use_cases.length > 0 && (
-                      <div className="mb-3">
-                        <div className="text-xs font-medium text-gray-700 mb-1">
-                          Example Use Cases:
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {template.example_use_cases.map(use => (
-                            <span
-                              key={use}
-                              className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full"
-                            >
-                              {use}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                {/* GDPR Automation */}
+                {templates.filter(t => t.id === "sage").length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">GDPR Automation</h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      {templates
+                        .filter(t => t.id === "sage")
+                        .map(template => (
+                          <button
+                            key={template.id}
+                            onClick={() => setSelectedTemplate(template.id)}
+                            className={`p-4 sm:p-5 border-2 rounded-lg text-left transition-all ${
+                              selectedTemplate === template.id
+                                ? "border-indigo-600 bg-indigo-50"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-base sm:text-lg font-semibold text-gray-900">
+                                    {template.name}
+                                  </h4>
+                                  <span
+                                    className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800"
+                                    title={`Stewardship Tier ${template.stewardship_tier}/5`}
+                                  >
+                                    Tier {template.stewardship_tier}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">{template.description}</p>
+                              </div>
+                              {selectedTemplate === template.id && (
+                                <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
-                    {template.supported_sops && template.supported_sops.length > 0 && (
-                      <div>
-                        <div className="text-xs font-medium text-gray-700 mb-2">
-                          Supported SOPs ({template.supported_sops.length}):
-                        </div>
-                        <ul className="space-y-1">
-                          {template.supported_sops.slice(0, 3).map((sop, idx) => (
-                            <li key={idx} className="text-xs text-gray-600 flex items-start">
-                              <span className="text-indigo-600 mr-2">•</span>
-                              {sop}
-                            </li>
-                          ))}
-                          {template.supported_sops.length > 3 && (
-                            <li className="text-xs text-gray-500 italic">
-                              + {template.supported_sops.length - 3} more...
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                  </button>
-                ))}
+                {/* Moderation */}
+                {templates.filter(t => t.id.startsWith("echo")).length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Moderation</h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      {templates
+                        .filter(t => t.id.startsWith("echo"))
+                        .map(template => (
+                          <button
+                            key={template.id}
+                            onClick={() => setSelectedTemplate(template.id)}
+                            className={`p-4 sm:p-5 border-2 rounded-lg text-left transition-all ${
+                              selectedTemplate === template.id
+                                ? "border-indigo-600 bg-indigo-50"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-base sm:text-lg font-semibold text-gray-900">
+                                    {template.name}
+                                  </h4>
+                                  <span
+                                    className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                                      template.stewardship_tier <= 2
+                                        ? "bg-green-100 text-green-800"
+                                        : template.stewardship_tier <= 3
+                                          ? "bg-yellow-100 text-yellow-800"
+                                          : "bg-orange-100 text-orange-800"
+                                    }`}
+                                    title={`Stewardship Tier ${template.stewardship_tier}/5`}
+                                  >
+                                    Tier {template.stewardship_tier}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">{template.description}</p>
+                              </div>
+                              {selectedTemplate === template.id && (
+                                <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Coming Soon Notice */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="text-blue-600 text-xl flex-shrink-0">ℹ️</span>
+                    <div>
+                      <h4 className="text-sm font-semibold text-blue-900 mb-1">
+                        More Templates Coming Soon
+                      </h4>
+                      <p className="text-sm text-blue-700">
+                        Education, cybersecurity, and medical templates are currently in development
+                        and will be available in future releases.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex space-x-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <button
                   onClick={() => {
                     setSelectedTemplate("");
