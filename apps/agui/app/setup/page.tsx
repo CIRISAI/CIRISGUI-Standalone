@@ -10,6 +10,7 @@ import type {
 } from "../../lib/ciris-sdk/resources/setup";
 import LogoIcon from "../../components/ui/floating/LogoIcon";
 import toast from "react-hot-toast";
+import { ADAPTERS } from "./adapters-config";
 
 type Step = "welcome" | "llm" | "users" | "template" | "adapters" | "complete";
 
@@ -138,8 +139,8 @@ export default function SetupWizard() {
         backup_llm_base_url: enableBackupLLM && backupApiBase ? backupApiBase : null,
         backup_llm_model: enableBackupLLM && backupModel ? backupModel : null,
         template_id: selectedTemplate || "general",
-        enabled_adapters: ["api"], // API adapter is always enabled
-        adapter_config: {},
+        enabled_adapters: enabledAdapters,
+        adapter_config: adapterConfigs,
         admin_username: username,
         admin_password: password,
         system_admin_password: adminPassword, // Update default admin password
@@ -838,7 +839,7 @@ export default function SetupWizard() {
                 </button>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-5 mb-2">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-5">
                 <div className="flex items-start gap-3">
                   <span className="text-yellow-600 text-xl flex-shrink-0">⚠️</span>
                   <div>
@@ -858,71 +859,122 @@ export default function SetupWizard() {
                   <p className="text-sm text-gray-600 mb-4">
                     Communication interfaces for interacting with your agent.
                   </p>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        id: "api",
-                        name: "API Adapter",
-                        description:
-                          "RESTful API server with OAuth2 authentication, role-based access control, and WebSocket support for real-time streaming. Includes 150+ endpoints with full OpenAPI documentation.",
-                        required: true,
-                      },
-                      {
-                        id: "cli",
-                        name: "CLI Adapter",
-                        description:
-                          "Command-line interface for development, testing, and local operation. Includes mock LLM integration for offline testing and debugging tools.",
-                        required: false,
-                      },
-                      {
-                        id: "discord",
-                        name: "Discord Adapter",
-                        description:
-                          "Production-ready Discord bot for community moderation. Multi-channel support, Wise Authority integration, real-time monitoring, and automatic content filtering.",
-                        required: false,
-                      },
-                    ].map(adapter => (
-                      <button
-                        key={adapter.id}
-                        onClick={() => {
-                          if (!adapter.required) {
-                            setEnabledAdapters(prev =>
-                              prev.includes(adapter.id)
-                                ? prev.filter(id => id !== adapter.id)
-                                : [...prev, adapter.id]
-                            );
-                          }
-                        }}
-                        disabled={adapter.required}
-                        className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
-                          enabledAdapters.includes(adapter.id)
-                            ? "border-indigo-600 bg-indigo-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        } ${adapter.required ? "opacity-75 cursor-not-allowed" : ""}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 mt-0.5">
-                            {enabledAdapters.includes(adapter.id) ? (
-                              <span className="text-indigo-600 text-xl">✓</span>
-                            ) : (
-                              <span className="text-gray-400 text-xl">○</span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <h4 className="text-base font-semibold text-gray-900">
-                                {adapter.name}
-                              </h4>
-                              {adapter.required && (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                                  Required
-                                </span>
+                  <div className="space-y-4">
+                    {ADAPTERS.core.map(adapter => (
+                      <div key={adapter.id} className="border-2 rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => {
+                            if (!adapter.required) {
+                              setEnabledAdapters(prev =>
+                                prev.includes(adapter.id)
+                                  ? prev.filter(id => id !== adapter.id)
+                                  : [...prev, adapter.id]
+                              );
+                            }
+                          }}
+                          disabled={adapter.required}
+                          className={`w-full p-4 text-left transition-all ${
+                            enabledAdapters.includes(adapter.id)
+                              ? "border-indigo-600 bg-indigo-50"
+                              : "border-gray-200 bg-white hover:bg-gray-50"
+                          } ${adapter.required ? "cursor-not-allowed" : ""}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {enabledAdapters.includes(adapter.id) ? (
+                                <span className="text-indigo-600 text-xl">✓</span>
+                              ) : (
+                                <span className="text-gray-400 text-xl">○</span>
                               )}
                             </div>
-                            <p className="text-sm text-gray-600">{adapter.description}</p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <h4 className="text-base font-semibold text-gray-900">
+                                  {adapter.name}
+                                </h4>
+                                {adapter.required && (
+                                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                    Required
+                                  </span>
+                                )}
+                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+                                  {adapter.tools} {adapter.tools === 1 ? "tool" : "tools"}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600">{adapter.description}</p>
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+
+                        {/* Configuration Fields */}
+                        {enabledAdapters.includes(adapter.id) &&
+                          adapter.configFields &&
+                          adapter.configFields.length > 0 && (
+                            <div className="bg-gray-50 p-4 border-t border-gray-200 space-y-4">
+                              <h5 className="text-sm font-semibold text-gray-900">Configuration</h5>
+                              {adapter.configFields.map(field => (
+                                <div key={field.name}>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    {field.label}
+                                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                                  </label>
+                                  {field.type === "select" ? (
+                                    <select
+                                      value={
+                                        adapterConfigs[adapter.id]?.[field.name] ||
+                                        field.default ||
+                                        ""
+                                      }
+                                      onChange={e =>
+                                        setAdapterConfigs(prev => ({
+                                          ...prev,
+                                          [adapter.id]: {
+                                            ...prev[adapter.id],
+                                            [field.name]: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    >
+                                      {field.options?.map(option => (
+                                        <option key={option} value={option}>
+                                          {option}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type={field.type}
+                                      value={
+                                        adapterConfigs[adapter.id]?.[field.name] ||
+                                        field.default ||
+                                        ""
+                                      }
+                                      onChange={e =>
+                                        setAdapterConfigs(prev => ({
+                                          ...prev,
+                                          [adapter.id]: {
+                                            ...prev[adapter.id],
+                                            [field.name]: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                      placeholder={field.default}
+                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                      required={field.required}
+                                    />
+                                  )}
+                                  <p className="mt-1 text-xs text-gray-500">{field.description}</p>
+                                  {field.envVar && (
+                                    <p className="mt-0.5 text-xs text-gray-400">
+                                      Env: {field.envVar}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -933,70 +985,114 @@ export default function SetupWizard() {
                   <p className="text-sm text-gray-600 mb-4">
                     Optional capabilities that extend your agent's functionality.
                   </p>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        id: "reddit",
-                        name: "Reddit Service",
-                        description:
-                          "Community moderation on Reddit. Post, reply, moderate, with AI transparency disclosure and deletion compliance tools.",
-                      },
-                      {
-                        id: "external_data_sql",
-                        name: "SQL Database Connector",
-                        description:
-                          "SQL database access for DSAR automation and external data queries. Supports SQLite, MySQL, and PostgreSQL.",
-                      },
-                      {
-                        id: "geo_wisdom",
-                        name: "Geographic Navigation",
-                        description:
-                          "Location-based queries and navigation assistance via OpenStreetMap integration.",
-                      },
-                      {
-                        id: "weather_wisdom",
-                        name: "Weather Advisories",
-                        description:
-                          "Real-time weather information and advisories via NOAA API integration.",
-                      },
-                      {
-                        id: "sensor_wisdom",
-                        name: "IoT Sensor Integration",
-                        description:
-                          "Home Assistant integration for IoT sensor interpretation (filters medical sensors for safety).",
-                      },
-                    ].map(service => (
-                      <button
-                        key={service.id}
-                        onClick={() => {
-                          setEnabledAdapters(prev =>
-                            prev.includes(service.id)
-                              ? prev.filter(id => id !== service.id)
-                              : [...prev, service.id]
-                          );
-                        }}
-                        className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
-                          enabledAdapters.includes(service.id)
-                            ? "border-indigo-600 bg-indigo-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 mt-0.5">
-                            {enabledAdapters.includes(service.id) ? (
-                              <span className="text-indigo-600 text-xl">✓</span>
-                            ) : (
-                              <span className="text-gray-400 text-xl">○</span>
-                            )}
+                  <div className="space-y-4">
+                    {ADAPTERS.modular.map(service => (
+                      <div key={service.id} className="border-2 rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => {
+                            setEnabledAdapters(prev =>
+                              prev.includes(service.id)
+                                ? prev.filter(id => id !== service.id)
+                                : [...prev, service.id]
+                            );
+                          }}
+                          className={`w-full p-4 text-left transition-all ${
+                            enabledAdapters.includes(service.id)
+                              ? "border-indigo-600 bg-indigo-50"
+                              : "border-gray-200 bg-white hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {enabledAdapters.includes(service.id) ? (
+                                <span className="text-indigo-600 text-xl">✓</span>
+                              ) : (
+                                <span className="text-gray-400 text-xl">○</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <h4 className="text-base font-semibold text-gray-900">
+                                  {service.name}
+                                </h4>
+                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+                                  {service.tools} {service.tools === 1 ? "tool" : "tools"}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600">{service.description}</p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-base font-semibold text-gray-900 mb-1">
-                              {service.name}
-                            </h4>
-                            <p className="text-sm text-gray-600">{service.description}</p>
-                          </div>
-                        </div>
-                      </button>
+                        </button>
+
+                        {/* Configuration Fields */}
+                        {enabledAdapters.includes(service.id) &&
+                          service.configFields &&
+                          service.configFields.length > 0 && (
+                            <div className="bg-gray-50 p-4 border-t border-gray-200 space-y-4">
+                              <h5 className="text-sm font-semibold text-gray-900">Configuration</h5>
+                              {service.configFields.map(field => (
+                                <div key={field.name}>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    {field.label}
+                                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                                  </label>
+                                  {field.type === "select" ? (
+                                    <select
+                                      value={
+                                        adapterConfigs[service.id]?.[field.name] ||
+                                        field.default ||
+                                        ""
+                                      }
+                                      onChange={e =>
+                                        setAdapterConfigs(prev => ({
+                                          ...prev,
+                                          [service.id]: {
+                                            ...prev[service.id],
+                                            [field.name]: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    >
+                                      {field.options?.map(option => (
+                                        <option key={option} value={option}>
+                                          {option}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type={field.type}
+                                      value={
+                                        adapterConfigs[service.id]?.[field.name] ||
+                                        field.default ||
+                                        ""
+                                      }
+                                      onChange={e =>
+                                        setAdapterConfigs(prev => ({
+                                          ...prev,
+                                          [service.id]: {
+                                            ...prev[service.id],
+                                            [field.name]: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                      placeholder={field.default}
+                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                      required={field.required}
+                                    />
+                                  )}
+                                  <p className="mt-1 text-xs text-gray-500">{field.description}</p>
+                                  {field.envVar && (
+                                    <p className="mt-0.5 text-xs text-gray-400">
+                                      Env: {field.envVar}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                      </div>
                     ))}
                   </div>
                 </div>
