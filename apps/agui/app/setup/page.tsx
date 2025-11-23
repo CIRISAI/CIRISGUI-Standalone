@@ -600,10 +600,18 @@ export default function SetupWizard() {
                 </button>
               </div>
 
-              <p className="text-gray-600">
-                Select a template that matches your use case. Each template comes with
-                pre-configured SOPs (Standard Operating Procedures).
-              </p>
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 sm:p-5 mb-2">
+                <h3 className="text-sm font-semibold text-indigo-900 mb-2">
+                  How CIRIS Agent Templates Work
+                </h3>
+                <p className="text-sm text-indigo-800 leading-relaxed">
+                  Each template contains Standard Operating Procedures (SOPs) that define your
+                  agent's role and capabilities. CIRIS agents are mission-driven—their conscience
+                  system validates every action against their defined mission to ensure ethical,
+                  aligned behavior. For multi-stage workflows, agents use tickets to track progress
+                  through each step of their SOPs, automatically generating tasks as work continues.
+                </p>
+              </div>
 
               {/* Template Categories */}
               <div className="space-y-6">
