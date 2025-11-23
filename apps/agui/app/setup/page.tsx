@@ -620,6 +620,25 @@ export default function SetupWizard() {
                 </p>
               </div>
 
+              {/* Coming Soon Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <span className="text-blue-600 text-xl flex-shrink-0">ℹ️</span>
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-900 mb-1">
+                      Available Templates
+                    </h4>
+                    <p className="text-sm text-blue-700">
+                      Currently available: <strong>Default</strong> (general purpose),{" "}
+                      <strong>Scout</strong> (customer service), <strong>Datum</strong> (research),{" "}
+                      <strong>Sage</strong> (GDPR automation), and <strong>Echo</strong> variants
+                      (moderation). Education, cybersecurity, and medical templates are in
+                      development for future releases.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Template Categories */}
               <div className="space-y-6">
                 {/* Demo/Customer Service */}
@@ -797,22 +816,6 @@ export default function SetupWizard() {
                     </div>
                   </div>
                 )}
-
-                {/* Coming Soon Notice */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-5">
-                  <div className="flex items-start gap-3">
-                    <span className="text-blue-600 text-xl flex-shrink-0">ℹ️</span>
-                    <div>
-                      <h4 className="text-sm font-semibold text-blue-900 mb-1">
-                        More Templates Coming Soon
-                      </h4>
-                      <p className="text-sm text-blue-700">
-                        Education, cybersecurity, and medical templates are currently in development
-                        and will be available in future releases.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
