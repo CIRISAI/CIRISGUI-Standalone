@@ -922,7 +922,7 @@ export default function SetupWizard() {
                                     <select
                                       value={
                                         adapterConfigs[adapter.id]?.[field.name] ||
-                                        field.default ||
+                                        ("default" in field ? field.default : "") ||
                                         ""
                                       }
                                       onChange={e =>
@@ -936,7 +936,10 @@ export default function SetupWizard() {
                                       }
                                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                     >
-                                      {field.options?.map(option => (
+                                      {("options" in field
+                                        ? (field.options as string[])
+                                        : ([] as string[])
+                                      ).map(option => (
                                         <option key={option} value={option}>
                                           {option}
                                         </option>
@@ -947,7 +950,7 @@ export default function SetupWizard() {
                                       type={field.type}
                                       value={
                                         adapterConfigs[adapter.id]?.[field.name] ||
-                                        field.default ||
+                                        ("default" in field ? field.default : "") ||
                                         ""
                                       }
                                       onChange={e =>
@@ -959,7 +962,7 @@ export default function SetupWizard() {
                                           },
                                         }))
                                       }
-                                      placeholder={field.default}
+                                      placeholder={"default" in field ? field.default : ""}
                                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                       required={field.required}
                                     />
@@ -1040,7 +1043,7 @@ export default function SetupWizard() {
                                     <select
                                       value={
                                         adapterConfigs[service.id]?.[field.name] ||
-                                        field.default ||
+                                        ("default" in field ? field.default : "") ||
                                         ""
                                       }
                                       onChange={e =>
@@ -1054,7 +1057,10 @@ export default function SetupWizard() {
                                       }
                                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                     >
-                                      {field.options?.map(option => (
+                                      {("options" in field
+                                        ? (field.options as string[])
+                                        : ([] as string[])
+                                      ).map(option => (
                                         <option key={option} value={option}>
                                           {option}
                                         </option>
@@ -1065,7 +1071,7 @@ export default function SetupWizard() {
                                       type={field.type}
                                       value={
                                         adapterConfigs[service.id]?.[field.name] ||
-                                        field.default ||
+                                        ("default" in field ? field.default : "") ||
                                         ""
                                       }
                                       onChange={e =>
@@ -1077,7 +1083,7 @@ export default function SetupWizard() {
                                           },
                                         }))
                                       }
-                                      placeholder={field.default}
+                                      placeholder={"default" in field ? field.default : ""}
                                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                       required={field.required}
                                     />
