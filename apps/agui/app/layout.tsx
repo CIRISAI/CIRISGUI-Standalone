@@ -30,11 +30,7 @@ const fontBrandRegular = localFont({
   fallback: ["sans-serif"],
 });
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -49,13 +45,11 @@ export default function RootLayout({
 
   const pathname = usePathname();
   const isLoginPage = pathname === "/login";
-  const isManagerPage = pathname?.startsWith("/manager");
-  const shouldUseLayout = !isLoginPage && !isManagerPage;
+  const shouldUseLayout = !isLoginPage;
 
   return (
     <html lang="en">
-      <body
-        className={` ${fontBrandRegular.className} ${geistMono.variable} antialiased`}>
+      <body className={` ${fontBrandRegular.className} ${geistMono.variable} antialiased`}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <AgentProvider>
