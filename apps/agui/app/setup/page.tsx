@@ -676,16 +676,6 @@ export default function SetupWizard() {
                               </span>
                             </div>
                             <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                            {template.example_use_cases &&
-                              template.example_use_cases.length > 0 && (
-                                <div className="mt-2">
-                                  <p className="text-xs text-gray-500 font-medium">Use Cases:</p>
-                                  <p className="text-xs text-gray-600">
-                                    {template.example_use_cases.slice(0, 2).join(", ")}
-                                    {template.example_use_cases.length > 2 && "..."}
-                                  </p>
-                                </div>
-                              )}
                           </div>
                           {selectedTemplate === template.id && (
                             <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
