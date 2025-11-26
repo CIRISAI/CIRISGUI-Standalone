@@ -620,200 +620,79 @@ export default function SetupWizard() {
                 </p>
               </div>
 
-              {/* Coming Soon Notice */}
+              {/* Templates Info */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-5">
                 <div className="flex items-start gap-3">
                   <span className="text-blue-600 text-xl flex-shrink-0">ℹ️</span>
                   <div>
                     <h4 className="text-sm font-semibold text-blue-900 mb-1">
-                      Available Templates
+                      Choose Your Agent Template
                     </h4>
                     <p className="text-sm text-blue-700">
-                      Currently available: <strong>Default</strong> (general purpose),{" "}
-                      <strong>Scout</strong> (customer service), <strong>Datum</strong> (research),{" "}
-                      <strong>Sage</strong> (GDPR automation), and <strong>Echo</strong> variants
-                      (moderation). Education, cybersecurity, and medical templates are in
-                      development for future releases.
+                      Select from available templates for different use cases including customer
+                      service, research, GDPR automation, and moderation. Each template comes with
+                      pre-configured SOPs and stewardship tier ratings.
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Template Categories */}
-              <div className="space-y-6">
-                {/* Demo/Customer Service */}
-                {templates.filter(t => t.id === "scout").length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                      Demo / Customer Service
-                    </h3>
-                    <div className="grid grid-cols-1 gap-3">
-                      {templates
-                        .filter(t => t.id === "scout")
-                        .map(template => (
-                          <button
-                            key={template.id}
-                            onClick={() => setSelectedTemplate(template.id)}
-                            className={`p-4 sm:p-5 border-2 rounded-lg text-left transition-all ${
-                              selectedTemplate === template.id
-                                ? "border-indigo-600 bg-indigo-50"
-                                : "border-gray-200 hover:border-gray-300"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-base sm:text-lg font-semibold text-gray-900">
-                                    {template.name}
-                                  </h4>
-                                  <span
-                                    className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800"
-                                    title={`Stewardship Tier ${template.stewardship_tier}/5`}
-                                  >
-                                    Tier {template.stewardship_tier}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                              </div>
-                              {selectedTemplate === template.id && (
-                                <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
-                              )}
-                            </div>
-                          </button>
-                        ))}
-                    </div>
+              {/* Available Templates */}
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Available Templates</h3>
+                {templates.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-gray-200">
+                    <p className="text-gray-500">Loading templates...</p>
                   </div>
-                )}
-
-                {/* Research */}
-                {templates.filter(t => t.id === "datum").length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Research</h3>
-                    <div className="grid grid-cols-1 gap-3">
-                      {templates
-                        .filter(t => t.id === "datum")
-                        .map(template => (
-                          <button
-                            key={template.id}
-                            onClick={() => setSelectedTemplate(template.id)}
-                            className={`p-4 sm:p-5 border-2 rounded-lg text-left transition-all ${
-                              selectedTemplate === template.id
-                                ? "border-indigo-600 bg-indigo-50"
-                                : "border-gray-200 hover:border-gray-300"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-base sm:text-lg font-semibold text-gray-900">
-                                    {template.name}
-                                  </h4>
-                                  <span
-                                    className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800"
-                                    title={`Stewardship Tier ${template.stewardship_tier}/5`}
-                                  >
-                                    Tier {template.stewardship_tier}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                              </div>
-                              {selectedTemplate === template.id && (
-                                <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
-                              )}
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {templates.map(template => (
+                      <button
+                        key={template.id}
+                        onClick={() => setSelectedTemplate(template.id)}
+                        className={`p-4 sm:p-5 border-2 rounded-lg text-left transition-all ${
+                          selectedTemplate === template.id
+                            ? "border-indigo-600 bg-indigo-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-base sm:text-lg font-semibold text-gray-900">
+                                {template.name}
+                              </h4>
+                              <span
+                                className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                                  template.stewardship_tier <= 2
+                                    ? "bg-green-100 text-green-800"
+                                    : template.stewardship_tier <= 3
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-orange-100 text-orange-800"
+                                }`}
+                                title={`Stewardship Tier ${template.stewardship_tier}/5`}
+                              >
+                                Tier {template.stewardship_tier}
+                              </span>
                             </div>
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* GDPR Automation */}
-                {templates.filter(t => t.id === "sage").length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">GDPR Automation</h3>
-                    <div className="grid grid-cols-1 gap-3">
-                      {templates
-                        .filter(t => t.id === "sage")
-                        .map(template => (
-                          <button
-                            key={template.id}
-                            onClick={() => setSelectedTemplate(template.id)}
-                            className={`p-4 sm:p-5 border-2 rounded-lg text-left transition-all ${
-                              selectedTemplate === template.id
-                                ? "border-indigo-600 bg-indigo-50"
-                                : "border-gray-200 hover:border-gray-300"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-base sm:text-lg font-semibold text-gray-900">
-                                    {template.name}
-                                  </h4>
-                                  <span
-                                    className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800"
-                                    title={`Stewardship Tier ${template.stewardship_tier}/5`}
-                                  >
-                                    Tier {template.stewardship_tier}
-                                  </span>
+                            <p className="text-sm text-gray-600 mt-1">{template.description}</p>
+                            {template.example_use_cases &&
+                              template.example_use_cases.length > 0 && (
+                                <div className="mt-2">
+                                  <p className="text-xs text-gray-500 font-medium">Use Cases:</p>
+                                  <p className="text-xs text-gray-600">
+                                    {template.example_use_cases.slice(0, 2).join(", ")}
+                                    {template.example_use_cases.length > 2 && "..."}
+                                  </p>
                                 </div>
-                                <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                              </div>
-                              {selectedTemplate === template.id && (
-                                <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
                               )}
-                            </div>
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Moderation */}
-                {templates.filter(t => t.id.startsWith("echo")).length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Moderation</h3>
-                    <div className="grid grid-cols-1 gap-3">
-                      {templates
-                        .filter(t => t.id.startsWith("echo"))
-                        .map(template => (
-                          <button
-                            key={template.id}
-                            onClick={() => setSelectedTemplate(template.id)}
-                            className={`p-4 sm:p-5 border-2 rounded-lg text-left transition-all ${
-                              selectedTemplate === template.id
-                                ? "border-indigo-600 bg-indigo-50"
-                                : "border-gray-200 hover:border-gray-300"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-base sm:text-lg font-semibold text-gray-900">
-                                    {template.name}
-                                  </h4>
-                                  <span
-                                    className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                                      template.stewardship_tier <= 2
-                                        ? "bg-green-100 text-green-800"
-                                        : template.stewardship_tier <= 3
-                                          ? "bg-yellow-100 text-yellow-800"
-                                          : "bg-orange-100 text-orange-800"
-                                    }`}
-                                    title={`Stewardship Tier ${template.stewardship_tier}/5`}
-                                  >
-                                    Tier {template.stewardship_tier}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                              </div>
-                              {selectedTemplate === template.id && (
-                                <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
-                              )}
-                            </div>
-                          </button>
-                        ))}
-                    </div>
+                          </div>
+                          {selectedTemplate === template.id && (
+                            <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
