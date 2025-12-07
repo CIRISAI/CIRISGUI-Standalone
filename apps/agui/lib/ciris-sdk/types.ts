@@ -2,14 +2,14 @@
 // Mirrors the Python SDK models for consistency
 
 // Role Types
-export type APIRole = 'OBSERVER' | 'ADMIN' | 'AUTHORITY' | 'SYSTEM_ADMIN';
-export type WARole = 'observer' | 'admin' | 'authority' | 'root';
+export type APIRole = "OBSERVER" | "ADMIN" | "AUTHORITY" | "SYSTEM_ADMIN";
+export type WARole = "observer" | "admin" | "authority" | "root";
 
 // Base Types
 export interface User {
   user_id: string;
   username: string;
-  role: APIRole;  // For backward compatibility
+  role: APIRole; // For backward compatibility
   api_role: APIRole;
   wa_role?: WARole;
   permissions: string[];
@@ -36,7 +36,7 @@ export interface AgentStatus {
   current_task?: any;
   services_active: number;
   memory_usage_mb: number;
-  version: string;  // e.g., "1.0.4-beta"
+  version: string; // e.g., "1.0.4-beta"
   codename: string; // e.g., "Graceful Guardian"
   code_hash?: string; // Optional code hash for exact version
 }
@@ -103,7 +103,7 @@ export interface MemoryOpResult {
 
 // System Types
 export interface HealthStatus {
-  status: 'healthy' | 'degraded' | 'unhealthy';
+  status: "healthy" | "degraded" | "unhealthy";
   version: string;
   uptime_seconds: number;
   services: Record<string, ServiceHealth>;
@@ -111,7 +111,7 @@ export interface HealthStatus {
 
 export interface ServiceHealth {
   name: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
+  status: "healthy" | "degraded" | "unhealthy";
   message?: string;
   last_check: string;
 }
@@ -119,7 +119,7 @@ export interface ServiceHealth {
 export interface ServiceInfo {
   name: string;
   type: string;
-  status: 'running' | 'stopped' | 'error';
+  status: "running" | "stopped" | "error";
   health: ServiceHealth;
   created_at: string;
   config?: Record<string, any>;
@@ -241,7 +241,7 @@ export interface ErrorResponse {
 
 // Enhanced error response for 403 Forbidden errors
 export interface PermissionDeniedError extends ErrorResponse {
-  error: 'insufficient_permissions';
+  error: "insufficient_permissions";
   message: string;
   discord_invite?: string;
   can_request_permissions?: boolean;
@@ -332,23 +332,36 @@ export interface ProcessorStateInfo {
   capabilities: string[];
 }
 
+// Cognitive State Transition Types
+export interface StateTransitionRequest {
+  target_state: "WORK" | "DREAM" | "PLAY" | "SOLITUDE";
+  reason?: string;
+}
+
+export interface StateTransitionResponse {
+  success: boolean;
+  current_state: string;
+  previous_state: string;
+  message: string;
+}
+
 // Enhanced Single-Step Types
 export enum StepPoint {
-  FINALIZE_TASKS_QUEUE = 'finalize_tasks_queue',
-  POPULATE_THOUGHT_QUEUE = 'populate_thought_queue',
-  POPULATE_ROUND = 'populate_round',
-  BUILD_CONTEXT = 'build_context',
-  PERFORM_DMAS = 'perform_dmas',
-  PERFORM_ASPDMA = 'perform_aspdma',
-  CONSCIENCE_EXECUTION = 'conscience_execution',
-  RECURSIVE_ASPDMA = 'recursive_aspdma',
-  RECURSIVE_CONSCIENCE = 'recursive_conscience',
-  ACTION_SELECTION = 'action_selection',
-  HANDLER_START = 'handler_start',
-  BUS_OUTBOUND = 'bus_outbound',
-  PACKAGE_HANDLING = 'package_handling',
-  BUS_INBOUND = 'bus_inbound',
-  HANDLER_COMPLETE = 'handler_complete'
+  FINALIZE_TASKS_QUEUE = "finalize_tasks_queue",
+  POPULATE_THOUGHT_QUEUE = "populate_thought_queue",
+  POPULATE_ROUND = "populate_round",
+  BUILD_CONTEXT = "build_context",
+  PERFORM_DMAS = "perform_dmas",
+  PERFORM_ASPDMA = "perform_aspdma",
+  CONSCIENCE_EXECUTION = "conscience_execution",
+  RECURSIVE_ASPDMA = "recursive_aspdma",
+  RECURSIVE_CONSCIENCE = "recursive_conscience",
+  ACTION_SELECTION = "action_selection",
+  HANDLER_START = "handler_start",
+  BUS_OUTBOUND = "bus_outbound",
+  PACKAGE_HANDLING = "package_handling",
+  BUS_INBOUND = "bus_inbound",
+  HANDLER_COMPLETE = "handler_complete",
 }
 
 // Queue and Task Types
@@ -618,7 +631,7 @@ export interface StepResultHandlerComplete {
 }
 
 // Union type for all step results
-export type StepResult = 
+export type StepResult =
   | StepResultFinalizeTasksQueue
   | StepResultPopulateThoughtQueue
   | StepResultPopulateRound
