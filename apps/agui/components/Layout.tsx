@@ -36,6 +36,7 @@ function Navbar({ className }: { className?: string }) {
     { name: "System", href: "/system", minRole: "ADMIN" },
     { name: "Runtime Control", href: "/runtime", minRole: "ADMIN" },
     { name: "Cognitive Sessions", href: "/sessions", minRole: "ADMIN" },
+    { name: "Adapters", href: "/adapters", minRole: "ADMIN" },
     { name: "Config", href: "/config", minRole: "ADMIN" },
     { name: "Users", href: "/users", minRole: "ADMIN" },
     { name: "WA", href: "/wa", minRole: "ADMIN" },

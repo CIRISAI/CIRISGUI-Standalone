@@ -25,13 +25,16 @@ export interface RuntimeControlResponse {
 export interface AdapterInfo {
   adapter_id: string;
   adapter_type: string;
-  is_running: boolean;
-  channels: string[];
-  message_count: number;
-  error_count: number;
-  created_at: string;
+  is_running?: boolean;
+  status?: string;
+  channels?: string[];
+  message_count?: number;
+  error_count?: number;
+  created_at?: string;
   last_activity?: string;
   config?: Record<string, any>;
+  channels_count?: number;
+  services_registered?: string[];
 }
 
 export interface AdapterListResponse {
@@ -45,10 +48,121 @@ export interface AdapterOperationResult {
   adapter_id?: string;
   message: string;
   adapter_type?: string;
+  error?: string;
+  is_running?: boolean;
 }
 
 export interface RegisterAdapterRequest {
   config?: Record<string, any>;
+  auto_start?: boolean;
+}
+
+// Module types for dynamic adapter configuration
+export interface ModuleConfigParameter {
+  name: string;
+  param_type: string;
+  default?: any;
+  description: string;
+  env_var?: string;
+  required: boolean;
+  sensitivity?: string;
+}
+
+export interface ModuleTypeInfo {
+  module_id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  module_source: string;
+  service_types: string[];
+  capabilities: string[];
+  configuration_schema: ModuleConfigParameter[];
+  requires_external_deps: boolean;
+  external_dependencies: Record<string, string>;
+  is_mock: boolean;
+  safe_domain?: string;
+  prohibited: string[];
+  metadata?: Record<string, any>;
+}
+
+export interface ModuleTypesResponse {
+  core_modules: ModuleTypeInfo[];
+  adapters: ModuleTypeInfo[];
+  total_core: number;
+  total_adapters: number;
+}
+
+// Configurable adapters (wizard flow)
+export interface OAuthConfigInfo {
+  provider_name: string;
+  authorization_path: string;
+  token_path: string;
+  client_id_source: string;
+  scopes: string[];
+  pkce_required: boolean;
+}
+
+export interface ConfigurationStepInfo {
+  step_id: string;
+  step_type: "discovery" | "oauth" | "select" | "input" | "confirm";
+  title: string;
+  description: string;
+  discovery_method?: string;
+  oauth_config?: OAuthConfigInfo;
+  depends_on: string[];
+  optional: boolean;
+}
+
+export interface ConfigurableAdapterInfo {
+  adapter_type: string;
+  name: string;
+  description: string;
+  workflow_type: string;
+  steps?: ConfigurationStepInfo[];
+}
+
+export interface ConfigurableAdaptersResponse {
+  adapters: ConfigurableAdapterInfo[];
+  total_count: number;
+}
+
+export interface ConfigSessionData {
+  session_id: string;
+  status: string;
+  adapter_type: string;
+  current_step: number;
+  current_step_info?: ConfigurationStepInfo;
+  steps_completed?: string[];
+  context?: Record<string, any>;
+}
+
+export interface DiscoveredItem {
+  id: string;
+  label: string;
+  description: string;
+  metadata?: Record<string, any>;
+}
+
+export interface ConfigOption {
+  id: string;
+  label: string;
+  description: string;
+  metadata?: Record<string, any>;
+}
+
+export interface StepExecutionResult {
+  success: boolean;
+  step_id?: string;
+  step_type?: string;
+  data?: {
+    discovered_items?: DiscoveredItem[];
+    oauth_url?: string;
+    options?: ConfigOption[];
+    config_preview?: Record<string, any>;
+  };
+  next_step?: number;
+  message?: string;
 }
 
 export class SystemResource extends BaseResource {
@@ -408,5 +522,117 @@ export class SystemResource extends BaseResource {
         category: string;
       }[]
     >("/v1/system/tools");
+  }
+
+  // ===== Advanced Adapter Configuration Methods =====
+
+  /**
+   * Get available module/adapter types with configuration schemas
+   */
+  async getModuleTypes(): Promise<ModuleTypesResponse> {
+    const response = await this.transport.get<{ data: ModuleTypesResponse }>(
+      "/v1/system/adapters/types"
+    );
+    return response.data || response;
+  }
+
+  /**
+   * Get configurable adapters (those with wizard flow)
+   */
+  async getConfigurableAdapters(): Promise<ConfigurableAdaptersResponse> {
+    const response = await this.transport.get<{ data: ConfigurableAdaptersResponse }>(
+      "/v1/system/adapters/configurable"
+    );
+    return response.data || response;
+  }
+
+  /**
+   * Start a configuration session for an adapter
+   */
+  async startConfigSession(adapterType: string): Promise<ConfigSessionData> {
+    const response = await this.transport.post<{ data: ConfigSessionData }>(
+      `/v1/system/adapters/${adapterType}/configure/start`,
+      {}
+    );
+    return response.data || response;
+  }
+
+  /**
+   * Get configuration session status
+   */
+  async getConfigSessionStatus(sessionId: string): Promise<ConfigSessionData> {
+    const response = await this.transport.get<{ data: ConfigSessionData }>(
+      `/v1/system/adapters/configure/${sessionId}/status`
+    );
+    return response.data || response;
+  }
+
+  /**
+   * Execute a configuration step
+   */
+  async executeConfigStep(
+    sessionId: string,
+    stepData: Record<string, any>
+  ): Promise<StepExecutionResult> {
+    const response = await this.transport.post<{ data: StepExecutionResult }>(
+      `/v1/system/adapters/configure/${sessionId}/step`,
+      { step_data: stepData }
+    );
+    return response.data || response;
+  }
+
+  /**
+   * Complete a configuration session
+   */
+  async completeConfigSession(
+    sessionId: string,
+    persist: boolean = false
+  ): Promise<AdapterOperationResult> {
+    const response = await this.transport.post<{ data: AdapterOperationResult }>(
+      `/v1/system/adapters/configure/${sessionId}/complete`,
+      { persist }
+    );
+    return response.data || response;
+  }
+
+  /**
+   * Register adapter with auto_start option
+   */
+  async registerAdapterWithConfig(
+    adapterType: string,
+    config: Record<string, any>,
+    autoStart: boolean = true,
+    adapterId?: string
+  ): Promise<AdapterOperationResult> {
+    const url = adapterId
+      ? `/v1/system/adapters/${adapterType}?adapter_id=${adapterId}`
+      : `/v1/system/adapters/${adapterType}`;
+
+    const response = await this.transport.post<{ data: AdapterOperationResult }>(url, {
+      config: {
+        adapter_type: adapterType,
+        enabled: true,
+        settings: config,
+      },
+      auto_start: autoStart,
+    });
+    return response.data || response;
+  }
+
+  /**
+   * Reload adapter with configuration
+   */
+  async reloadAdapterWithConfig(
+    adapterId: string,
+    config?: Record<string, any>
+  ): Promise<AdapterOperationResult> {
+    const response = await this.transport.put<{ data: AdapterOperationResult }>(
+      `/v1/system/adapters/${adapterId}/reload`,
+      {
+        config: config || {},
+        auto_start: true,
+      }
+    );
+    return response.data || response;
   }
 }

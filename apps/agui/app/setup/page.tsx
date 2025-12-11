@@ -6,20 +6,19 @@ import { cirisClient } from "../../lib/ciris-sdk";
 import type {
   LLMProvider,
   AgentTemplate,
-  AdapterConfig,
   SetupCompleteRequest,
 } from "../../lib/ciris-sdk/resources/setup";
 import LogoIcon from "../../components/ui/floating/LogoIcon";
 import toast from "react-hot-toast";
 
-type Step = "welcome" | "llm" | "users" | "template" | "adapters" | "complete";
+// Simplified wizard: 3 steps - no template selection (force ally), no adapter config (default to api)
+type Step = "welcome" | "llm" | "users" | "complete";
 
 export default function SetupWizard() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [providers, setProviders] = useState<LLMProvider[]>([]);
   const [templates, setTemplates] = useState<AgentTemplate[]>([]);
-  const [adapters, setAdapters] = useState<AdapterConfig[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Form state - Primary LLM
@@ -36,40 +35,33 @@ export default function SetupWizard() {
   const [backupModel, setBackupModel] = useState("");
   const [backupApiBase, setBackupApiBase] = useState("");
 
+  // User account state
   const [adminPassword, setAdminPassword] = useState("");
   const [adminPasswordConfirm, setAdminPasswordConfirm] = useState("");
+  const [adminPasswordError, setAdminPasswordError] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [userPasswordError, setUserPasswordError] = useState<string | null>(null);
 
-  const [selectedTemplate, setSelectedTemplate] = useState("");
+  // Force "ally" template - no user selection
+  const selectedTemplate = "ally";
 
-  // Adapter selection state
-  const [enabledAdapters, setEnabledAdapters] = useState<string[]>(["api"]);
-  const [adapterConfigs, setAdapterConfigs] = useState<Record<string, Record<string, string>>>({});
-
-  // Load providers, templates, and adapters
+  // Load providers and templates
   useEffect(() => {
-    loadSetupData();
+    loadProvidersAndTemplates();
   }, []);
 
-  const loadSetupData = async () => {
+  const loadProvidersAndTemplates = async () => {
     try {
-      const [providersRes, templatesRes, adaptersRes] = await Promise.all([
+      const [providersRes, templatesRes] = await Promise.all([
         cirisClient.setup.getProviders(),
         cirisClient.setup.getTemplates(),
-        cirisClient.setup.getAdapters(),
       ]);
       setProviders(providersRes);
       setTemplates(templatesRes);
-      setAdapters(adaptersRes);
       if (providersRes.length > 0) {
         setSelectedProvider(providersRes[0].id);
-      }
-      // Set default enabled adapters based on API response
-      const defaultEnabled = adaptersRes.filter(a => a.enabled_by_default).map(a => a.id);
-      if (defaultEnabled.length > 0) {
-        setEnabledAdapters(defaultEnabled);
       }
     } catch (error) {
       console.error("Failed to load setup data:", error);
@@ -113,21 +105,32 @@ export default function SetupWizard() {
         setLlmValid(false);
         toast.error(response.error || "LLM validation failed");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLlmValid(false);
-      toast.error(error.message || "Failed to validate LLM");
+      const errorMessage = error instanceof Error ? error.message : "Failed to validate LLM";
+      toast.error(errorMessage);
     } finally {
       setValidatingLLM(false);
     }
   };
 
   const completeSetup = async () => {
+    // Validate admin password
     if (adminPassword !== adminPasswordConfirm) {
       toast.error("Admin passwords do not match");
       return;
     }
+    if (adminPassword.length < 8) {
+      toast.error("Admin password must be at least 8 characters");
+      return;
+    }
+    // Validate user passwords
     if (password !== passwordConfirm) {
       toast.error("User passwords do not match");
+      return;
+    }
+    if (password.length < 8) {
+      toast.error("User password must be at least 8 characters");
       return;
     }
     if (!llmValid) {
@@ -146,23 +149,52 @@ export default function SetupWizard() {
         backup_llm_api_key: enableBackupLLM && backupApiKey ? backupApiKey : null,
         backup_llm_base_url: enableBackupLLM && backupApiBase ? backupApiBase : null,
         backup_llm_model: enableBackupLLM && backupModel ? backupModel : null,
-        template_id: selectedTemplate || "general",
-        enabled_adapters: enabledAdapters,
-        adapter_config: adapterConfigs,
+        template_id: selectedTemplate,
+        enabled_adapters: ["api"], // Default to just API adapter
+        adapter_config: {},
         admin_username: username,
         admin_password: password,
-        system_admin_password: adminPassword, // Update default admin password
+        system_admin_password: adminPassword,
         agent_port: 8080,
       };
 
       const response = await cirisClient.setup.complete(config);
       console.log("Setup complete:", response.message);
+
+      // Save the selected agent template name for AgentContext to use
+      const selectedTemplateObj = templates.find(t => t.id === selectedTemplate);
+      if (selectedTemplateObj) {
+        localStorage.setItem("selectedAgentName", selectedTemplateObj.name);
+        localStorage.setItem("selectedAgentId", selectedTemplateObj.id);
+      }
+
       setCurrentStep("complete");
-    } catch (error: any) {
-      toast.error(error.message || "Setup failed");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Setup failed";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateRandomPassword = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    let randomPassword = "";
+    for (let i = 0; i < 16; i++) {
+      randomPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setAdminPassword(randomPassword);
+    setAdminPasswordConfirm(randomPassword);
+    setAdminPasswordError(null);
+    // Copy to clipboard
+    navigator.clipboard
+      .writeText(randomPassword)
+      .then(() => {
+        toast.success("Random password generated and copied to clipboard!");
+      })
+      .catch(() => {
+        toast.success(`Random password generated: ${randomPassword}`);
+      });
   };
 
   const provider = providers.find(p => p.id === selectedProvider);
@@ -176,31 +208,27 @@ export default function SetupWizard() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome to CIRIS</h1>
         </div>
 
-        {/* Progress indicator */}
+        {/* Progress indicator - 3 steps */}
         {currentStep !== "complete" && (
           <div className="mb-8">
             <div className="flex items-center justify-center space-x-2 sm:space-x-4">
-              {["welcome", "llm", "users", "template", "adapters"].map((step, idx) => (
+              {["welcome", "llm", "users"].map((step, idx) => (
                 <div key={step} className="flex items-center">
                   <div
                     className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full text-sm sm:text-base ${
                       currentStep === step
                         ? "bg-indigo-600 text-white"
-                        : idx <
-                            ["welcome", "llm", "users", "template", "adapters"].indexOf(currentStep)
+                        : idx < ["welcome", "llm", "users"].indexOf(currentStep)
                           ? "bg-green-500 text-white"
                           : "bg-gray-200 text-gray-500"
                     }`}
                   >
-                    {idx < ["welcome", "llm", "users", "template", "adapters"].indexOf(currentStep)
-                      ? "✓"
-                      : idx + 1}
+                    {idx < ["welcome", "llm", "users"].indexOf(currentStep) ? "✓" : idx + 1}
                   </div>
-                  {idx < 4 && (
+                  {idx < 2 && (
                     <div
                       className={`w-8 sm:w-16 h-1 ${
-                        idx <
-                        ["welcome", "llm", "users", "template", "adapters"].indexOf(currentStep)
+                        idx < ["welcome", "llm", "users"].indexOf(currentStep)
                           ? "bg-green-500"
                           : "bg-gray-200"
                       }`}
@@ -225,7 +253,9 @@ export default function SetupWizard() {
                   configure your instance in just a few steps.
                 </p>
 
-                <h3 className="text-lg font-semibold text-gray-900 mt-6 mb-3">What you'll need:</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mt-6 mb-3">
+                  What you'll configure:
+                </h3>
                 <ul className="space-y-2">
                   <li className="flex items-start">
                     <span className="text-indigo-600 mr-2">•</span>
@@ -237,8 +267,8 @@ export default function SetupWizard() {
                   <li className="flex items-start">
                     <span className="text-indigo-600 mr-2">•</span>
                     <span>
-                      <strong>Admin Password</strong> - A secure password for the default admin
-                      account
+                      <strong>Admin Password</strong> - A secure password (min 8 characters) for the
+                      default admin account
                     </span>
                   </li>
                   <li className="flex items-start">
@@ -497,20 +527,42 @@ export default function SetupWizard() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Admin Account</h3>
                 <div className="space-y-4">
                   <div>
-                    <label
-                      htmlFor="adminPassword"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      New Admin Password
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label
+                        htmlFor="adminPassword"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        New Admin Password{" "}
+                        <span className="text-xs text-gray-500">(min 8 characters)</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={generateRandomPassword}
+                        className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                      >
+                        Generate Random
+                      </button>
+                    </div>
                     <input
                       id="adminPassword"
                       type="password"
                       value={adminPassword}
-                      onChange={e => setAdminPassword(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      placeholder="Enter a secure password"
+                      onChange={e => {
+                        setAdminPassword(e.target.value);
+                        if (e.target.value.length > 0 && e.target.value.length < 8) {
+                          setAdminPasswordError("Password must be at least 8 characters");
+                        } else {
+                          setAdminPasswordError(null);
+                        }
+                      }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                        adminPasswordError ? "border-red-500" : "border-gray-300"
+                      }`}
+                      placeholder="Enter a secure password (min 8 chars)"
                     />
+                    {adminPasswordError && (
+                      <p className="mt-1 text-sm text-red-600">{adminPasswordError}</p>
+                    )}
                   </div>
                   <div>
                     <label
@@ -556,16 +608,28 @@ export default function SetupWizard() {
                       htmlFor="password"
                       className="block text-sm font-medium text-gray-700 mb-2"
                     >
-                      Password
+                      Password <span className="text-xs text-gray-500">(min 8 characters)</span>
                     </label>
                     <input
                       id="password"
                       type="password"
                       value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      placeholder="Enter your password"
+                      onChange={e => {
+                        setPassword(e.target.value);
+                        if (e.target.value.length > 0 && e.target.value.length < 8) {
+                          setUserPasswordError("Password must be at least 8 characters");
+                        } else {
+                          setUserPasswordError(null);
+                        }
+                      }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                        userPasswordError ? "border-red-500" : "border-gray-300"
+                      }`}
+                      placeholder="Enter your password (min 8 chars)"
                     />
+                    {userPasswordError && (
+                      <p className="mt-1 text-sm text-red-600">{userPasswordError}</p>
+                    )}
                   </div>
                   <div>
                     <label
@@ -587,220 +651,25 @@ export default function SetupWizard() {
               </div>
 
               <button
-                onClick={() => setCurrentStep("template")}
+                onClick={completeSetup}
                 disabled={
+                  loading ||
                   !adminPassword ||
-                  !adminPasswordConfirm ||
+                  adminPassword.length < 8 ||
+                  adminPassword !== adminPasswordConfirm ||
                   !username ||
                   !password ||
-                  !passwordConfirm
+                  password.length < 8 ||
+                  password !== passwordConfirm
                 }
                 className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
-                Continue to Template Selection →
+                {loading ? "Completing Setup..." : "Complete Setup"}
               </button>
             </div>
           )}
 
-          {/* Step 4: Template Selection */}
-          {currentStep === "template" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Choose Your Agent Template</h2>
-                <button
-                  onClick={() => setCurrentStep("users")}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ← Back
-                </button>
-              </div>
-
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 sm:p-5 mb-2">
-                <h3 className="text-sm font-semibold text-indigo-900 mb-2">
-                  How CIRIS Agent Templates Work
-                </h3>
-                <p className="text-sm text-indigo-800 leading-relaxed">
-                  Each template contains Standard Operating Procedures (SOPs) that define your
-                  agent's role and capabilities. CIRIS agents are mission-driven—their conscience
-                  system validates every action against their defined mission to ensure ethical,
-                  aligned behavior. For multi-stage workflows, agents use tickets to track progress
-                  through each step of their SOPs, automatically generating tasks as work continues.
-                </p>
-              </div>
-
-              {/* Templates Info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-5">
-                <div className="flex items-start gap-3">
-                  <span className="text-blue-600 text-xl flex-shrink-0">ℹ️</span>
-                  <div>
-                    <h4 className="text-sm font-semibold text-blue-900 mb-1">
-                      Choose Your Agent Template
-                    </h4>
-                    <p className="text-sm text-blue-700">
-                      Select from available templates for different use cases including customer
-                      service, research, GDPR automation, and moderation. Each template comes with
-                      pre-configured SOPs and stewardship tier ratings.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Available Templates */}
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Available Templates</h3>
-                {templates.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-gray-200">
-                    <p className="text-gray-500">Loading templates...</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {templates.map(template => (
-                      <button
-                        key={template.id}
-                        onClick={() => setSelectedTemplate(template.id)}
-                        className={`p-4 sm:p-5 border-2 rounded-lg text-left transition-all ${
-                          selectedTemplate === template.id
-                            ? "border-indigo-600 bg-indigo-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="text-base sm:text-lg font-semibold text-gray-900">
-                                {template.name}
-                              </h4>
-                              <span
-                                className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                                  template.stewardship_tier <= 2
-                                    ? "bg-green-100 text-green-800"
-                                    : template.stewardship_tier <= 3
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : "bg-orange-100 text-orange-800"
-                                }`}
-                                title={`Stewardship Tier ${template.stewardship_tier}/5`}
-                              >
-                                Tier {template.stewardship_tier}
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                          </div>
-                          {selectedTemplate === template.id && (
-                            <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                <button
-                  onClick={() => setCurrentStep("adapters")}
-                  className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-                >
-                  Continue to Adapters →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 5: Adapters */}
-          {currentStep === "adapters" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Configure Adapters</h2>
-                <button
-                  onClick={() => setCurrentStep("template")}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ← Back
-                </button>
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-5">
-                <div className="flex items-start gap-3">
-                  <span className="text-yellow-600 text-xl flex-shrink-0">⚠️</span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-yellow-900 mb-1">Restart Required</h3>
-                    <p className="text-sm text-yellow-800">
-                      Adapter configuration changes require restarting the CIRIS agent to take
-                      effect.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Available Adapters */}
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Available Adapters</h3>
-                {adapters.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-gray-200">
-                    <p className="text-gray-500">Loading adapters...</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {adapters.map(adapter => (
-                      <button
-                        key={adapter.id}
-                        onClick={() => {
-                          setEnabledAdapters(prev =>
-                            prev.includes(adapter.id)
-                              ? prev.filter(id => id !== adapter.id)
-                              : [...prev, adapter.id]
-                          );
-                        }}
-                        className={`p-4 sm:p-5 border-2 rounded-lg text-left transition-all ${
-                          enabledAdapters.includes(adapter.id)
-                            ? "border-indigo-600 bg-indigo-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="text-base sm:text-lg font-semibold text-gray-900">
-                                {adapter.name}
-                              </h4>
-                              {adapter.enabled_by_default && (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                                  Default
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-600 mt-1">{adapter.description}</p>
-                            {adapter.required_env_vars.length > 0 && (
-                              <div className="mt-2">
-                                <p className="text-xs text-gray-500">
-                                  Required: {adapter.required_env_vars.join(", ")}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                          {enabledAdapters.includes(adapter.id) && (
-                            <span className="text-indigo-600 text-xl flex-shrink-0">✓</span>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                <button
-                  onClick={completeSetup}
-                  disabled={loading}
-                  className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                >
-                  {loading ? "Completing Setup..." : "Complete Setup"}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 6: Complete */}
+          {/* Step 4: Complete */}
           {currentStep === "complete" && (
             <div className="text-center space-y-6 py-8">
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
