@@ -27,10 +27,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: apps/agui/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        working-directory: apps/agui
         run: npm ci --legacy-peer-deps
 
       - name: Run linting
