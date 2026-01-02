@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAgent } from "@/contexts/AgentContextHybrid";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cirisClient } from "@/lib/ciris-sdk/client";
+import { getMessageType, MessageType } from "@/lib/ciris-sdk/types";
 import toast from "react-hot-toast";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import {
@@ -1106,27 +1107,63 @@ export default function InteractPage() {
                           if (item.type === "message") {
                             const msg = item.data;
                             const task = item.relatedTask;
+                            const messageType = getMessageType(msg);
+
+                            // Message type styling configuration
+                            const messageStyles: Record<MessageType, {
+                              containerClass: string;
+                              bubbleClass: string;
+                              icon?: React.ReactNode;
+                            }> = {
+                              user: {
+                                containerClass: 'text-right',
+                                bubbleClass: 'bg-blue-500 text-white',
+                              },
+                              agent: {
+                                containerClass: 'text-left',
+                                bubbleClass: 'bg-gray-200 text-gray-900',
+                              },
+                              system: {
+                                containerClass: 'text-center',
+                                bubbleClass: 'bg-blue-50 border border-blue-200 text-blue-800',
+                                icon: (
+                                  <svg className="w-4 h-4 mr-1.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                ),
+                              },
+                              error: {
+                                containerClass: 'text-center',
+                                bubbleClass: 'bg-red-50 border border-red-200 text-red-800',
+                                icon: (
+                                  <svg className="w-4 h-4 mr-1.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                  </svg>
+                                ),
+                              },
+                            };
+
+                            const style = messageStyles[messageType];
 
                             return (
                               <div key={`msg-${msg.id || i}`} className="mb-3">
-                                <div className={`${!msg.is_agent ? "text-right" : "text-left"}`}>
+                                <div className={style.containerClass}>
                                   <div
-                                    className={`inline-block px-4 py-2 rounded ${
-                                      !msg.is_agent ? "bg-blue-500 text-white" : "bg-gray-200"
-                                    }`}
+                                    className={`inline-block px-4 py-2 rounded ${style.bubbleClass}`}
                                   >
+                                    {style.icon}
                                     {msg.content}
                                   </div>
                                   {/* Debug: Show task correlation info for user messages */}
-                                  {!msg.is_agent && task && (
+                                  {messageType === "user" && task && (
                                     <div className="text-xs text-gray-500 mt-1">
                                       ✓ Task: {task.taskId.slice(-8)}
                                     </div>
                                   )}
                                 </div>
 
-                                {/* Show related task if it exists */}
-                                {task && !msg.is_agent && (
+                                {/* Show related task if it exists (only for user messages) */}
+                                {task && messageType === "user" && (
                                   <div className="mt-2 ml-4">
                                     <details
                                       className="border rounded-lg"

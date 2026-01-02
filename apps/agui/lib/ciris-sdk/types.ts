@@ -163,6 +163,8 @@ export interface ResourceLimit {
 }
 
 // Conversation Types
+export type MessageType = "user" | "agent" | "system" | "error";
+
 export interface ConversationMessage {
   id: string;
   content: string;
@@ -171,6 +173,20 @@ export interface ConversationMessage {
   channel_id: string;
   timestamp: string;
   is_agent: boolean;
+  /** Optional message type for richer message classification. Falls back to is_agent if not present. */
+  message_type?: MessageType;
+}
+
+/**
+ * Helper to determine the effective message type for a ConversationMessage.
+ * Provides backwards compatibility: uses message_type if present, otherwise falls back to is_agent.
+ */
+export function getMessageType(message: ConversationMessage): MessageType {
+  if (message.message_type) {
+    return message.message_type;
+  }
+  // Backwards compatibility: infer from is_agent
+  return message.is_agent ? "agent" : "user";
 }
 
 export interface ConversationHistory {

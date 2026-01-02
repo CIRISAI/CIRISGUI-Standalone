@@ -10,6 +10,7 @@ import { useAgent } from '../../contexts/AgentContextHybrid';
 import { NoAgentsPlaceholder } from '../../components/NoAgentsPlaceholder';
 import { extractErrorMessage, getDiscordInvite } from '../../lib/utils/error-helpers';
 import { ErrorModal } from '../../components/ErrorModal';
+import { ChatMessageList } from '../../components/ChatMessage';
 
 export default function CommsPage() {
   const { user } = useAuth();
@@ -202,39 +203,12 @@ export default function CommsPage() {
 
           {/* Messages */}
           <div className="border rounded-lg bg-gray-50 h-96 overflow-y-auto p-4 mb-4">
-            {isLoading ? (
-              <div className="text-center text-gray-500">Loading conversation...</div>
-            ) : messages.length === 0 ? (
-              <div className="text-center text-gray-500">No messages yet. Start a conversation!</div>
-            ) : (
-              <div className="space-y-3">
-                {messages.map((msg, idx) => {
-                  // Debug log to see message structure
-                  if (idx === 0) console.log('Message structure:', msg);
-
-                  return (
-                    <div
-                      key={msg.id || idx}
-                      className={`flex ${msg.is_agent ? 'justify-start' : 'justify-end'}`}
-                    >
-                      <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                          msg.is_agent
-                            ? 'bg-white border border-gray-200'
-                            : 'bg-blue-600 text-white'
-                        }`}
-                      >
-                        <div className={`text-xs mb-1 ${msg.is_agent ? 'text-gray-500' : 'text-blue-100'}`}>
-                          {msg.author || (msg.is_agent ? 'CIRIS' : 'You')} • {new Date(msg.timestamp).toLocaleTimeString()}
-                        </div>
-                        <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
+            <ChatMessageList
+              messages={messages}
+              isLoading={isLoading}
+              emptyMessage="No messages yet. Start a conversation!"
+            />
+            <div ref={messagesEndRef} />
           </div>
 
           <div className="text-xs text-gray-500 mb-2">
