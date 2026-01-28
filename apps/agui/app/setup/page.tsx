@@ -547,18 +547,25 @@ export default function SetupWizard() {
               </div>
 
               <p className="text-gray-600">
-                Customize your CIRIS experience with these optional enhancements.
-                All features can be changed later in settings.
+                Customize your CIRIS experience with these optional settings.
               </p>
 
-              <div className="space-y-4">
-                {/* Covenant Metrics Consent */}
+              {/* Section 1: Covenant Metrics Consent - MUST appear first */}
+              <div className="mt-6">
                 <CovenantMetricsConsent
                   consentGiven={covenantMetricsConsent}
                   onConsentChange={setCovenantMetricsConsent}
                 />
+              </div>
 
-                {/* Adapter Discovery */}
+              {/* Section 2: Communication Adapters */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Communication Adapters
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Select which adapters to enable. You can configure additional adapters later in Settings.
+                </p>
                 <AdapterDiscoveryCard
                   onAdaptersLoaded={setAdapterReport}
                   onAdapterInstalled={(name) => {
