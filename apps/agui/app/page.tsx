@@ -753,74 +753,98 @@ export default function InteractPage() {
 
     // Special rendering for idma_result (Identity DMA - V1.9.3)
     if (stageName === "idma_result") {
-      const kEff = data?.k_eff ?? null;
-      const correlationRisk = data?.correlation_risk ?? null;
-      const fragilityFlag = data?.fragility_flag ?? false;
-      const phase = data?.phase || "unknown";
+      const isFragile = data?.is_fragile ?? false;
+      const fragilityReason = data?.fragility_reason || null;
+      const epistemicHumility = data?.epistemic_humility ?? null;
+      const diversityScore = data?.diversity_score ?? null;
+      const correlationFactors = data?.correlation_factors || [];
 
-      // Threshold checks
-      const kEffOk = kEff !== null && kEff > 0.7;
-      const correlationRiskOk = correlationRisk !== null && correlationRisk < 0.3;
+      // Convert to percentage for display
+      const confidencePercent = epistemicHumility !== null ? Math.round(epistemicHumility * 100) : null;
+      const diversityPercent = diversityScore !== null ? Math.round(diversityScore * 100) : null;
 
       const otherFields = Object.keys(data || {}).filter(
-        key => !["k_eff", "correlation_risk", "fragility_flag", "phase"].includes(key)
+        key => !["is_fragile", "fragility_reason", "epistemic_humility", "diversity_score", "correlation_factors"].includes(key)
       );
 
       return (
         <div className="space-y-3">
-          {/* Identity Status Header */}
+          {/* Identity Check Header */}
           <div
             className={`flex items-center gap-3 border rounded-lg p-3 ${
-              fragilityFlag
+              isFragile
                 ? "bg-orange-50 border-orange-300"
-                : kEffOk && correlationRiskOk
-                  ? "bg-purple-50 border-purple-200"
-                  : "bg-yellow-50 border-yellow-200"
+                : "bg-purple-50 border-purple-200"
             }`}
           >
             <div className="flex-1">
               <div className="font-bold text-lg text-purple-900">
-                Identity Phase: {phase.toUpperCase()}
+                Identity Check
               </div>
-              {fragilityFlag && (
+              {isFragile && (
                 <div className="text-sm text-orange-700 mt-1">
-                  ⚠️ Fragility Warning Active
+                  ⚠️ Fragile: {fragilityReason || "Identity stability warning"}
+                </div>
+              )}
+              {!isFragile && (
+                <div className="text-sm text-green-700 mt-1">
+                  ✓ Stable
                 </div>
               )}
             </div>
           </div>
 
-          {/* Identity Metrics */}
+          {/* Epistemic Metrics */}
           <div>
-            <div className="text-purple-600 font-semibold mb-2">Identity Coherence:</div>
+            <div className="text-purple-600 font-semibold mb-2">Epistemic Metrics:</div>
             <div className="grid grid-cols-2 gap-2">
-              {/* k_eff */}
-              <div
-                className={`p-2 rounded border ${kEffOk ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200"}`}
-              >
-                <div className="text-xs font-medium text-gray-600">k_eff (Coherence)</div>
+              {/* Epistemic Humility (Confidence) */}
+              <div className="p-2 rounded border bg-purple-50 border-purple-200">
+                <div className="text-xs font-medium text-gray-600">Confidence</div>
                 <div className="text-lg font-bold">
-                  {kEff !== null ? kEff.toFixed(3) : "N/A"}
+                  {confidencePercent !== null ? `${confidencePercent}%` : "N/A"}
                 </div>
-                <div className="text-xs text-gray-500">
-                  {kEffOk ? "✓ > 0.7" : "⚠ Should be > 0.7"}
-                </div>
+                {confidencePercent !== null && (
+                  <div className="mt-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-purple-500 transition-all"
+                      style={{ width: `${confidencePercent}%` }}
+                    />
+                  </div>
+                )}
               </div>
 
-              {/* Correlation Risk */}
-              <div
-                className={`p-2 rounded border ${correlationRiskOk ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200"}`}
-              >
-                <div className="text-xs font-medium text-gray-600">Correlation Risk</div>
+              {/* Diversity Score (DMA Agreement) */}
+              <div className="p-2 rounded border bg-purple-50 border-purple-200">
+                <div className="text-xs font-medium text-gray-600">DMA Agreement</div>
                 <div className="text-lg font-bold">
-                  {correlationRisk !== null ? correlationRisk.toFixed(3) : "N/A"}
+                  {diversityPercent !== null ? `${diversityPercent}%` : "N/A"}
                 </div>
-                <div className="text-xs text-gray-500">
-                  {correlationRiskOk ? "✓ < 0.3" : "⚠ Should be < 0.3"}
-                </div>
+                {diversityPercent !== null && (
+                  <div className="mt-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-purple-500 transition-all"
+                      style={{ width: `${diversityPercent}%` }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
+
+          {/* Correlation Factors */}
+          {correlationFactors.length > 0 && (
+            <div>
+              <div className="text-purple-600 font-semibold mb-2">Correlation Factors:</div>
+              <div className="flex flex-wrap gap-1">
+                {correlationFactors.map((factor: string, idx: number) => (
+                  <span key={idx} className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
+                    {factor}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Other fields under "View details" */}
           {otherFields.length > 0 && (
@@ -843,46 +867,74 @@ export default function InteractPage() {
     }
 
     // Special rendering for tsaspdma_result (Tool-Specific ASPDMA - V1.9.3)
+    // Only emitted when TOOL action is selected
     if (stageName === "tsaspdma_result") {
-      const toolName = data?.tool_name || "unknown";
-      const toolParameters = data?.tool_parameters || {};
-      const reasoning = data?.reasoning || "";
-      const approved = data?.approved ?? null;
+      const originalToolName = data?.original_tool_name || "unknown";
+      const finalAction = data?.final_action || "tool"; // "tool", "speak", or "ponder"
+      const finalToolName = data?.final_tool_name || originalToolName;
+      const finalParameters = data?.final_parameters || {};
+      const rationale = data?.tsaspdma_rationale || "";
+
+      // Determine status based on final_action
+      const isApproved = finalAction === "tool";
+      const needsClarification = finalAction === "speak";
+      const isReconsidering = finalAction === "ponder";
+
+      // Status styling
+      const statusConfig = {
+        tool: { bg: "bg-green-50 border-green-200", text: "text-green-700", icon: "✅", label: "Approved" },
+        speak: { bg: "bg-yellow-50 border-yellow-300", text: "text-yellow-700", icon: "⚠️", label: "Needs Clarification" },
+        ponder: { bg: "bg-blue-50 border-blue-200", text: "text-blue-700", icon: "🔄", label: "Reconsidering" },
+      };
+      const status = statusConfig[finalAction as keyof typeof statusConfig] || statusConfig.tool;
 
       const otherFields = Object.keys(data || {}).filter(
-        key => !["tool_name", "tool_parameters", "reasoning", "approved"].includes(key)
+        key => !["original_tool_name", "final_action", "final_tool_name", "final_parameters", "tsaspdma_rationale"].includes(key)
       );
 
       return (
         <div className="space-y-3">
-          {/* Tool Selection Header */}
-          <div
-            className={`flex items-center gap-3 border rounded-lg p-3 ${
-              approved === true
-                ? "bg-cyan-50 border-cyan-200"
-                : approved === false
-                  ? "bg-red-50 border-red-200"
-                  : "bg-gray-50 border-gray-200"
-            }`}
-          >
+          {/* Tool Validation Header */}
+          <div className={`flex items-center gap-3 border rounded-lg p-3 ${status.bg}`}>
+            <div className="text-2xl">{status.icon}</div>
             <div className="flex-1">
-              <div className="font-bold text-2xl text-cyan-900">
-                {toolName.toUpperCase()}
+              <div className="font-bold text-lg text-gray-900">
+                🔧 Tool Validation
               </div>
-              {approved !== null && (
-                <div className={`text-sm mt-1 ${approved ? "text-green-700" : "text-red-700"}`}>
-                  {approved ? "✓ Approved" : "✗ Not Approved"}
-                </div>
-              )}
+              <div className="text-sm text-gray-700 mt-1">
+                Tool: <span className="font-mono font-medium">{finalToolName}</span>
+              </div>
+              <div className={`text-sm font-medium mt-1 ${status.text}`}>
+                Status: {status.label}
+              </div>
             </div>
           </div>
 
+          {/* Show if tool was changed */}
+          {originalToolName !== finalToolName && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-sm">
+              <span className="text-yellow-700">
+                ⚠️ Original tool <span className="font-mono">{originalToolName}</span> was changed to <span className="font-mono">{finalToolName}</span>
+              </span>
+            </div>
+          )}
+
+          {/* Action changed alert */}
+          {!isApproved && (
+            <div className={`border rounded p-2 text-sm ${status.bg}`}>
+              <span className={status.text}>
+                {needsClarification && "Tool execution paused - needs user clarification"}
+                {isReconsidering && "Tool execution paused - agent is reconsidering approach"}
+              </span>
+            </div>
+          )}
+
           {/* Tool Parameters */}
-          {Object.keys(toolParameters).length > 0 && (
+          {Object.keys(finalParameters).length > 0 && (
             <div>
               <div className="text-cyan-600 font-semibold mb-2">Parameters:</div>
               <div className="bg-gray-50 border border-gray-200 rounded p-2">
-                {Object.entries(toolParameters).map(([key, value]) => (
+                {Object.entries(finalParameters).map(([key, value]) => (
                   <div key={key} className="py-1">
                     <span className="text-cyan-600 font-medium text-xs mr-2">{key}:</span>
                     {renderExpandableData(value, 2)}
@@ -893,10 +945,10 @@ export default function InteractPage() {
           )}
 
           {/* Reasoning */}
-          {reasoning && (
+          {rationale && (
             <div>
               <div className="text-cyan-600 font-semibold mb-2">Reasoning:</div>
-              <div className="ml-2 text-gray-700 whitespace-pre-wrap">{reasoning}</div>
+              <div className="ml-2 text-gray-700 whitespace-pre-wrap">{rationale}</div>
             </div>
           )}
 
