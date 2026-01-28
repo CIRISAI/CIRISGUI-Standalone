@@ -127,6 +127,76 @@ export interface ConfigurableAdaptersResponse {
   total_count: number;
 }
 
+// V1.9.3: Adapter Discovery Types
+export interface ToolInfo {
+  name: string;
+  when_to_use: string;
+  description?: string;
+}
+
+export interface InstallHint {
+  id: string;
+  kind: "brew" | "apt" | "pip" | "npm" | "choco" | "manual";
+  label: string;
+  formula?: string;
+  package?: string;
+  command?: string;
+  platforms: string[];
+}
+
+export interface AdapterAvailabilityStatus {
+  name: string;
+  eligible: boolean;
+  eligibility_reason?: string;
+  missing_binaries?: string[];
+  missing_env_vars?: string[];
+  missing_config?: string[];
+  platform_supported?: boolean;
+  can_install: boolean;
+  install_hints?: InstallHint[];
+  tools?: ToolInfo[];
+  service_types?: string[];
+}
+
+export interface AdapterDiscoveryReport {
+  eligible: AdapterAvailabilityStatus[];
+  ineligible: AdapterAvailabilityStatus[];
+  total_discovered: number;
+  total_eligible: number;
+  total_installable: number;
+}
+
+export interface AdapterInstallRequest {
+  dry_run?: boolean;
+  hint_id?: string;
+}
+
+export interface AdapterInstallResponse {
+  success: boolean;
+  message: string;
+  installed_binaries?: string[];
+  now_eligible: boolean;
+  output?: string;
+  error?: string;
+}
+
+export interface AdapterEligibilityCheckResponse {
+  name: string;
+  eligible: boolean;
+  eligibility_reason?: string;
+  missing_requirements?: string[];
+}
+
+// V1.9.3: Covenant Metrics Types
+export interface CovenantMetricsConfig {
+  consent_given: boolean;
+  consent_timestamp?: string;
+  trace_level: "detailed";  // Always detailed - no user selection
+  endpoint?: string;
+  batch_size?: number;
+  flush_interval_seconds?: number;
+}
+
 export interface ConfigSessionData {
   session_id: string;
   status: string;
@@ -634,5 +704,56 @@ export class SystemResource extends BaseResource {
       }
     );
     return response.data || response;
+  }
+
+  // ============================================
+  // V1.9.3: Adapter Discovery & Installation
+  // ============================================
+
+  /**
+   * Get adapter discovery report with eligibility status
+   *
+   * Returns all discovered adapters categorized by eligibility.
+   * This endpoint works without auth during setup.
+   */
+  async getAvailableAdapters(): Promise<AdapterDiscoveryReport> {
+    const response = await this.transport.get<AdapterDiscoveryReport>(
+      "/v1/system/adapters/available"
+    );
+    return response;
+  }
+
+  /**
+   * Install missing dependencies for an adapter
+   *
+   * Attempts to install binaries using system package managers.
+   *
+   * @param adapterName - Name of the adapter to install for
+   * @param options - Installation options
+   */
+  async installAdapterDependencies(
+    adapterName: string,
+    options: AdapterInstallRequest = {}
+  ): Promise<AdapterInstallResponse> {
+    const response = await this.transport.post<AdapterInstallResponse>(
+      `/v1/system/adapters/${adapterName}/install`,
+      options
+    );
+    return response;
+  }
+
+  /**
+   * Recheck adapter eligibility after manual installation
+   *
+   * @param adapterName - Name of the adapter to check
+   */
+  async checkAdapterEligibility(
+    adapterName: string
+  ): Promise<AdapterEligibilityCheckResponse> {
+    const response = await this.transport.post<AdapterEligibilityCheckResponse>(
+      `/v1/system/adapters/${adapterName}/check-eligibility`,
+      {}
+    );
+    return response;
   }
 }

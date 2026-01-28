@@ -8,11 +8,14 @@ import type {
   AgentTemplate,
   SetupCompleteRequest,
 } from "../../lib/ciris-sdk/resources/setup";
+import type { AdapterDiscoveryReport } from "../../lib/ciris-sdk/resources/system";
 import LogoIcon from "../../components/ui/floating/LogoIcon";
+import { AdapterDiscoveryCard, CovenantMetricsConsent } from "../../components/setup";
 import toast from "react-hot-toast";
 
-// Simplified wizard: 3 steps - no template selection (force ally), no adapter config (default to api)
-type Step = "welcome" | "llm" | "users" | "complete";
+// V1.9.3: Added optional_features step between llm and users
+type Step = "welcome" | "llm" | "optional_features" | "users" | "complete";
+const STEP_ORDER: Step[] = ["welcome", "llm", "optional_features", "users", "complete"];
 
 export default function SetupWizard() {
   const router = useRouter();
@@ -43,6 +46,10 @@ export default function SetupWizard() {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [userPasswordError, setUserPasswordError] = useState<string | null>(null);
+
+  // V1.9.3: Optional features state
+  const [covenantMetricsConsent, setCovenantMetricsConsent] = useState(false);
+  const [adapterReport, setAdapterReport] = useState<AdapterDiscoveryReport | null>(null);
 
   // Force "ally" template - no user selection
   const selectedTemplate = "ally";
@@ -140,6 +147,20 @@ export default function SetupWizard() {
 
     setLoading(true);
     try {
+      // Build enabled adapters list
+      const enabledAdapters = ["api"]; // Always include API adapter
+      if (covenantMetricsConsent) {
+        enabledAdapters.push("ciris_covenant_metrics");
+      }
+
+      // Build adapter config
+      const adapterConfig: Record<string, string> = {};
+      if (covenantMetricsConsent) {
+        adapterConfig.CIRIS_COVENANT_METRICS_CONSENT = "true";
+        adapterConfig.CIRIS_COVENANT_METRICS_CONSENT_TIMESTAMP = new Date().toISOString();
+        adapterConfig.CIRIS_COVENANT_METRICS_TRACE_LEVEL = "detailed";
+      }
+
       const config: SetupCompleteRequest = {
         llm_provider: selectedProvider,
         llm_api_key: apiKey,
@@ -150,8 +171,11 @@ export default function SetupWizard() {
         backup_llm_base_url: enableBackupLLM && backupApiBase ? backupApiBase : null,
         backup_llm_model: enableBackupLLM && backupModel ? backupModel : null,
         template_id: selectedTemplate,
-        enabled_adapters: ["api"], // Default to just API adapter
-        adapter_config: {},
+        enabled_adapters: enabledAdapters,
+        adapter_config: adapterConfig,
+        // V1.9.3: Covenant Metrics
+        covenant_metrics_consent: covenantMetricsConsent,
+        covenant_metrics_consent_timestamp: covenantMetricsConsent ? new Date().toISOString() : undefined,
         admin_username: username,
         admin_password: password,
         system_admin_password: adminPassword,
@@ -208,34 +232,39 @@ export default function SetupWizard() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome to CIRIS</h1>
         </div>
 
-        {/* Progress indicator - 3 steps */}
+        {/* Progress indicator - 4 steps (excluding complete) */}
         {currentStep !== "complete" && (
           <div className="mb-8">
             <div className="flex items-center justify-center space-x-2 sm:space-x-4">
-              {["welcome", "llm", "users"].map((step, idx) => (
-                <div key={step} className="flex items-center">
-                  <div
-                    className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full text-sm sm:text-base ${
-                      currentStep === step
-                        ? "bg-indigo-600 text-white"
-                        : idx < ["welcome", "llm", "users"].indexOf(currentStep)
-                          ? "bg-green-500 text-white"
-                          : "bg-gray-200 text-gray-500"
-                    }`}
-                  >
-                    {idx < ["welcome", "llm", "users"].indexOf(currentStep) ? "✓" : idx + 1}
-                  </div>
-                  {idx < 2 && (
+              {STEP_ORDER.filter(s => s !== "complete").map((step, idx) => {
+                const currentIdx = STEP_ORDER.indexOf(currentStep);
+                const stepIdx = STEP_ORDER.indexOf(step);
+                return (
+                  <div key={step} className="flex items-center">
                     <div
-                      className={`w-8 sm:w-16 h-1 ${
-                        idx < ["welcome", "llm", "users"].indexOf(currentStep)
-                          ? "bg-green-500"
-                          : "bg-gray-200"
+                      className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full text-sm sm:text-base ${
+                        currentStep === step
+                          ? "bg-indigo-600 text-white"
+                          : stepIdx < currentIdx
+                            ? "bg-green-500 text-white"
+                            : "bg-gray-200 text-gray-500"
                       }`}
-                    />
-                  )}
-                </div>
-              ))}
+                    >
+                      {stepIdx < currentIdx ? "✓" : idx + 1}
+                    </div>
+                    {idx < 3 && (
+                      <div
+                        className={`w-6 sm:w-12 h-1 ${
+                          stepIdx < currentIdx ? "bg-green-500" : "bg-gray-200"
+                        }`}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex justify-center mt-2 text-xs text-gray-500">
+              Step {STEP_ORDER.indexOf(currentStep) + 1} of 4
             </div>
           </div>
         )}
@@ -495,22 +524,65 @@ export default function SetupWizard() {
               </div>
 
               <button
-                onClick={() => setCurrentStep("users")}
+                onClick={() => setCurrentStep("optional_features")}
                 disabled={!llmValid}
                 className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+              >
+                Continue to Optional Features →
+              </button>
+            </div>
+          )}
+
+          {/* Step 3: Optional Features (V1.9.3) */}
+          {currentStep === "optional_features" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Optional Features</h2>
+                <button
+                  onClick={() => setCurrentStep("llm")}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ← Back
+                </button>
+              </div>
+
+              <p className="text-gray-600">
+                Customize your CIRIS experience with these optional enhancements.
+                All features can be changed later in settings.
+              </p>
+
+              <div className="space-y-4">
+                {/* Covenant Metrics Consent */}
+                <CovenantMetricsConsent
+                  consentGiven={covenantMetricsConsent}
+                  onConsentChange={setCovenantMetricsConsent}
+                />
+
+                {/* Adapter Discovery */}
+                <AdapterDiscoveryCard
+                  onAdaptersLoaded={setAdapterReport}
+                  onAdapterInstalled={(name) => {
+                    toast.success(`Adapter ${name} is now ready!`);
+                  }}
+                />
+              </div>
+
+              <button
+                onClick={() => setCurrentStep("users")}
+                className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
               >
                 Continue to User Setup →
               </button>
             </div>
           )}
 
-          {/* Step 3: User & Admin Setup */}
+          {/* Step 4: User & Admin Setup */}
           {currentStep === "users" && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">Create Your Accounts</h2>
                 <button
-                  onClick={() => setCurrentStep("llm")}
+                  onClick={() => setCurrentStep("optional_features")}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   ← Back
@@ -669,7 +741,7 @@ export default function SetupWizard() {
             </div>
           )}
 
-          {/* Step 4: Complete */}
+          {/* Step 5: Complete */}
           {currentStep === "complete" && (
             <div className="text-center space-y-6 py-8">
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">

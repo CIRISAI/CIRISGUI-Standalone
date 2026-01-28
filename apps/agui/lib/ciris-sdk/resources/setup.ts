@@ -85,6 +85,10 @@ export interface SetupCompleteRequest {
   enabled_adapters: string[];
   adapter_config: Record<string, any>;
 
+  // V1.9.3: Covenant Metrics Configuration
+  covenant_metrics_consent?: boolean;
+  covenant_metrics_consent_timestamp?: string;
+
   // Dual Password System
   admin_username: string;
   admin_password: string;
