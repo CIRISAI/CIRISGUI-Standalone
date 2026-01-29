@@ -104,8 +104,19 @@ export function AdapterDiscoveryCard({
 
   if (!report) return null;
 
-  const installableAdapters = report.ineligible.filter(a => a.can_install);
-  const unavailableAdapters = report.ineligible.filter(a => !a.can_install);
+  // Filter out ciris_covenant_metrics - it's controlled by the consent checkbox above, not the adapter list
+  const isCovenantMetrics = (name: string) =>
+    name.toLowerCase().includes("covenant") || name.toLowerCase().includes("metrics");
+
+  const filteredEligible = report.eligible.filter(a => !isCovenantMetrics(a.name));
+  const filteredIneligible = report.ineligible.filter(a => !isCovenantMetrics(a.name));
+
+  const installableAdapters = filteredIneligible.filter(a => a.can_install);
+  const unavailableAdapters = filteredIneligible.filter(a => !a.can_install);
+
+  // Recalculate counts without covenant metrics
+  const eligibleCount = filteredEligible.length;
+  const installableCount = installableAdapters.length;
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -116,7 +127,8 @@ export function AdapterDiscoveryCard({
           <div className="flex-1">
             <h3 className="font-semibold text-gray-900">Available Adapters</h3>
             <p className="text-sm text-gray-500">
-              {report.total_eligible} ready, {report.total_installable} can be installed
+              {eligibleCount} ready
+              {installableCount > 0 ? `, ${installableCount} can be installed` : ""}
             </p>
           </div>
           <button
@@ -133,12 +145,12 @@ export function AdapterDiscoveryCard({
         <div className="flex gap-4 text-sm">
           <div className="flex items-center gap-2">
             <span className="text-green-600">✅</span>
-            <span>{report.total_eligible} Ready</span>
+            <span>{eligibleCount} Ready</span>
           </div>
-          {report.total_installable > 0 && (
+          {installableCount > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-yellow-600">⚠️</span>
-              <span>{report.total_installable} Installable</span>
+              <span>{installableCount} Installable</span>
             </div>
           )}
           {unavailableAdapters.length > 0 && (
@@ -156,10 +168,10 @@ export function AdapterDiscoveryCard({
           {/* Ready Adapters */}
           <div>
             <h4 className="text-sm font-medium text-green-700 mb-2 flex items-center gap-2">
-              <span className="text-green-600">✅</span> Ready to Use ({report.eligible.length})
+              <span className="text-green-600">✅</span> Ready to Use ({eligibleCount})
             </h4>
             <div className="grid grid-cols-2 gap-2">
-              {report.eligible.slice(0, 8).map(adapter => (
+              {filteredEligible.slice(0, 8).map(adapter => (
                 <div
                   key={adapter.name}
                   className="text-sm text-gray-700 px-2 py-1 bg-green-50 rounded"
@@ -167,9 +179,9 @@ export function AdapterDiscoveryCard({
                   {adapter.name}
                 </div>
               ))}
-              {report.eligible.length > 8 && (
+              {filteredEligible.length > 8 && (
                 <div className="text-sm text-gray-500 px-2 py-1">
-                  +{report.eligible.length - 8} more
+                  +{filteredEligible.length - 8} more
                 </div>
               )}
             </div>

@@ -3,11 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cirisClient } from "../../lib/ciris-sdk";
-import type {
-  LLMProvider,
-  AgentTemplate,
-  SetupCompleteRequest,
-} from "../../lib/ciris-sdk/resources/setup";
+import type { LLMProvider, SetupCompleteRequest } from "../../lib/ciris-sdk/resources/setup";
 import type { AdapterDiscoveryReport } from "../../lib/ciris-sdk/resources/system";
 import LogoIcon from "../../components/ui/floating/LogoIcon";
 import { AdapterDiscoveryCard, CovenantMetricsConsent } from "../../components/setup";
@@ -21,7 +17,6 @@ export default function SetupWizard() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [providers, setProviders] = useState<LLMProvider[]>([]);
-  const [templates, setTemplates] = useState<AgentTemplate[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Form state - Primary LLM
@@ -51,22 +46,19 @@ export default function SetupWizard() {
   const [covenantMetricsConsent, setCovenantMetricsConsent] = useState(false);
   const [adapterReport, setAdapterReport] = useState<AdapterDiscoveryReport | null>(null);
 
-  // Force "ally" template - no user selection
-  const selectedTemplate = "ally";
+  // Always use "ally" template - no user selection
+  const SELECTED_TEMPLATE_ID = "ally";
+  const SELECTED_TEMPLATE_NAME = "Ally";
 
-  // Load providers and templates
+  // Load providers
   useEffect(() => {
-    loadProvidersAndTemplates();
+    loadProviders();
   }, []);
 
-  const loadProvidersAndTemplates = async () => {
+  const loadProviders = async () => {
     try {
-      const [providersRes, templatesRes] = await Promise.all([
-        cirisClient.setup.getProviders(),
-        cirisClient.setup.getTemplates(),
-      ]);
+      const providersRes = await cirisClient.setup.getProviders();
       setProviders(providersRes);
-      setTemplates(templatesRes);
       if (providersRes.length > 0) {
         setSelectedProvider(providersRes[0].id);
       }
@@ -170,12 +162,14 @@ export default function SetupWizard() {
         backup_llm_api_key: enableBackupLLM && backupApiKey ? backupApiKey : null,
         backup_llm_base_url: enableBackupLLM && backupApiBase ? backupApiBase : null,
         backup_llm_model: enableBackupLLM && backupModel ? backupModel : null,
-        template_id: selectedTemplate,
+        template_id: SELECTED_TEMPLATE_ID,
         enabled_adapters: enabledAdapters,
         adapter_config: adapterConfig,
         // V1.9.3: Covenant Metrics
         covenant_metrics_consent: covenantMetricsConsent,
-        covenant_metrics_consent_timestamp: covenantMetricsConsent ? new Date().toISOString() : undefined,
+        covenant_metrics_consent_timestamp: covenantMetricsConsent
+          ? new Date().toISOString()
+          : undefined,
         admin_username: username,
         admin_password: password,
         system_admin_password: adminPassword,
@@ -185,12 +179,9 @@ export default function SetupWizard() {
       const response = await cirisClient.setup.complete(config);
       console.log("Setup complete:", response.message);
 
-      // Save the selected agent template name for AgentContext to use
-      const selectedTemplateObj = templates.find(t => t.id === selectedTemplate);
-      if (selectedTemplateObj) {
-        localStorage.setItem("selectedAgentName", selectedTemplateObj.name);
-        localStorage.setItem("selectedAgentId", selectedTemplateObj.id);
-      }
+      // Save the agent template name for AgentContext to use
+      localStorage.setItem("selectedAgentName", SELECTED_TEMPLATE_NAME);
+      localStorage.setItem("selectedAgentId", SELECTED_TEMPLATE_ID);
 
       setCurrentStep("complete");
     } catch (error: unknown) {
@@ -560,15 +551,14 @@ export default function SetupWizard() {
 
               {/* Section 2: Communication Adapters */}
               <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Communication Adapters
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Communication Adapters</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Select which adapters to enable. You can configure additional adapters later in Settings.
+                  Select which adapters to enable. You can configure additional adapters later in
+                  Settings.
                 </p>
                 <AdapterDiscoveryCard
                   onAdaptersLoaded={setAdapterReport}
-                  onAdapterInstalled={(name) => {
+                  onAdapterInstalled={name => {
                     toast.success(`Adapter ${name} is now ready!`);
                   }}
                 />
