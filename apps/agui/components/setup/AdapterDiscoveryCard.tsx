@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { cirisClient } from '@/lib/ciris-sdk';
+import React, { useState, useEffect } from "react";
+import { cirisClient } from "@/lib/ciris-sdk";
 import type {
   AdapterDiscoveryReport,
   AdapterAvailabilityStatus,
   AdapterInstallResponse,
-} from '@/lib/ciris-sdk/resources/system';
+} from "@/lib/ciris-sdk/resources/system";
 
 interface AdapterDiscoveryCardProps {
   onAdaptersLoaded?: (report: AdapterDiscoveryReport) => void;
@@ -35,11 +35,12 @@ export function AdapterDiscoveryCard({
     setLoading(true);
     setError(null);
     try {
-      const discoveryReport = await cirisClient.system.getAvailableAdapters();
+      // Use setup endpoint (no auth required) instead of system endpoint
+      const discoveryReport = await cirisClient.setup.getAvailableAdapters();
       setReport(discoveryReport);
       onAdaptersLoaded?.(discoveryReport);
     } catch (err: any) {
-      setError(err.message || 'Failed to load adapters');
+      setError(err.message || "Failed to load adapters");
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,7 @@ export function AdapterDiscoveryCard({
         adapter: adapterName,
         result: {
           success: false,
-          message: err.message || 'Installation failed',
+          message: err.message || "Installation failed",
           now_eligible: false,
           error: err.message,
         },
@@ -122,7 +123,7 @@ export function AdapterDiscoveryCard({
             onClick={() => setExpanded(!expanded)}
             className="px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
           >
-            {expanded ? 'Collapse' : 'View Details'}
+            {expanded ? "Collapse" : "View Details"}
           </button>
         </div>
       </div>
@@ -178,7 +179,8 @@ export function AdapterDiscoveryCard({
           {installableAdapters.length > 0 && (
             <div>
               <h4 className="text-sm font-medium text-yellow-700 mb-2 flex items-center gap-2">
-                <span className="text-yellow-600">⚠️</span> Can Be Installed ({installableAdapters.length})
+                <span className="text-yellow-600">⚠️</span> Can Be Installed (
+                {installableAdapters.length})
               </h4>
               <div className="space-y-2">
                 {installableAdapters.map(adapter => (
@@ -204,17 +206,14 @@ export function AdapterDiscoveryCard({
               </h4>
               <div className="space-y-2">
                 {unavailableAdapters.map(adapter => (
-                  <div
-                    key={adapter.name}
-                    className="p-2 bg-gray-50 rounded border border-gray-200"
-                  >
+                  <div key={adapter.name} className="p-2 bg-gray-50 rounded border border-gray-200">
                     <div className="font-medium text-sm text-gray-700">{adapter.name}</div>
                     <div className="text-xs text-gray-500">
-                      {adapter.eligibility_reason || 'Manual configuration required'}
+                      {adapter.eligibility_reason || "Manual configuration required"}
                     </div>
                     {adapter.missing_env_vars && adapter.missing_env_vars.length > 0 && (
                       <div className="text-xs text-gray-400 mt-1">
-                        Needs: {adapter.missing_env_vars.join(', ')}
+                        Needs: {adapter.missing_env_vars.join(", ")}
                       </div>
                     )}
                   </div>
@@ -245,16 +244,16 @@ function InstallableAdapterRow({
     if (!adapter.install_hints || adapter.install_hints.length === 0) return null;
     const hint = adapter.install_hints[0];
     switch (hint.kind) {
-      case 'brew':
-        return 'Homebrew';
-      case 'apt':
-        return 'apt';
-      case 'pip':
-        return 'pip';
-      case 'npm':
-        return 'npm';
-      case 'choco':
-        return 'Chocolatey';
+      case "brew":
+        return "Homebrew";
+      case "apt":
+        return "apt";
+      case "pip":
+        return "pip";
+      case "npm":
+        return "npm";
+      case "choco":
+        return "Chocolatey";
       default:
         return hint.kind;
     }
@@ -266,12 +265,10 @@ function InstallableAdapterRow({
         <div className="flex-1">
           <div className="font-medium text-sm text-gray-900">{adapter.name}</div>
           <div className="text-xs text-gray-600">
-            Missing: {adapter.missing_binaries?.join(', ') || 'dependencies'}
+            Missing: {adapter.missing_binaries?.join(", ") || "dependencies"}
           </div>
           {getInstallMethodLabel() && (
-            <div className="text-xs text-gray-500 mt-1">
-              Install via {getInstallMethodLabel()}
-            </div>
+            <div className="text-xs text-gray-500 mt-1">Install via {getInstallMethodLabel()}</div>
           )}
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -279,7 +276,7 @@ function InstallableAdapterRow({
             installResult.success ? (
               <span className="text-xs text-green-600 font-medium">✓ Installed</span>
             ) : (
-              <span className="text-xs text-red-600">{installResult.error || 'Failed'}</span>
+              <span className="text-xs text-red-600">{installResult.error || "Failed"}</span>
             )
           ) : (
             <button
@@ -293,7 +290,7 @@ function InstallableAdapterRow({
                   Installing...
                 </span>
               ) : (
-                'Install Now'
+                "Install Now"
               )}
             </button>
           )}

@@ -1,6 +1,7 @@
 // CIRIS TypeScript SDK - Setup Resource
 
 import { BaseResource } from "./base";
+import type { AdapterDiscoveryReport } from "./system";
 
 // Generic success response wrapper (matches backend schema)
 export interface SuccessResponse<T> {
@@ -186,6 +187,19 @@ export class SetupResource extends BaseResource {
    */
   async getAdapters(): Promise<AdapterConfig[]> {
     return this.transport.get<AdapterConfig[]>("/v1/setup/adapters");
+  }
+
+  /**
+   * Get available adapters with eligibility status (no auth required)
+   *
+   * Returns both eligible (ready to use) and ineligible (missing requirements)
+   * adapters, including installation hints for ineligible adapters.
+   * This is the setup-wizard equivalent of system.getAvailableAdapters().
+   *
+   * @returns Adapter discovery report with eligibility status
+   */
+  async getAvailableAdapters(): Promise<AdapterDiscoveryReport> {
+    return this.transport.get<AdapterDiscoveryReport>("/v1/setup/adapters/available");
   }
 
   /**
