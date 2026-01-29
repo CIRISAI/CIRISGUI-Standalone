@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
-import { cirisClient, User } from '../lib/ciris-sdk';
-import { sdkConfigManager } from '../lib/sdk-config-manager';
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { cirisClient, User } from "../lib/ciris-sdk";
+import { sdkConfigManager } from "../lib/sdk-config-manager";
 
 interface AuthContextType {
   user: User | null;
@@ -30,15 +30,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Check auth status on mount
   useEffect(() => {
-    // Skip auth check on login page and manager pages
+    // Skip auth check on login, setup, and manager pages
     const pathname = window.location.pathname;
-    if (pathname === '/login' || pathname.startsWith('/manager')) {
+    if (pathname === "/login" || pathname === "/setup" || pathname.startsWith("/manager")) {
       setLoading(false);
     } else {
       checkAuth();
     }
     // Also check for manager token
-    const savedManagerToken = localStorage.getItem('manager_token');
+    const savedManagerToken = localStorage.getItem("manager_token");
     if (savedManagerToken) {
       setManagerToken(savedManagerToken);
     }
@@ -51,65 +51,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentUser);
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error("Auth check failed:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const login = useCallback(async (username: string, password: string) => {
-    try {
-      // Get the selected agent from localStorage (set by login page)
-      const selectedAgentId = localStorage.getItem('selectedAgentId');
-      if (!selectedAgentId) {
-        throw new Error('No agent selected');
+  const login = useCallback(
+    async (username: string, password: string) => {
+      try {
+        // Get the selected agent from localStorage (set by login page)
+        const selectedAgentId = localStorage.getItem("selectedAgentId");
+        if (!selectedAgentId) {
+          throw new Error("No agent selected");
+        }
+
+        // Configure SDK for the selected agent BEFORE login
+        sdkConfigManager.configure(selectedAgentId);
+
+        // Now perform the login
+        const user = await cirisClient.login(username, password);
+
+        // Configure SDK again with the auth token from AuthStore
+        const token = cirisClient.auth.getAccessToken();
+        if (token) {
+          sdkConfigManager.configure(selectedAgentId, token);
+        }
+
+        setUser(user);
+        toast.success(`Welcome, ${user.username || user.user_id}!`);
+        router.push("/");
+      } catch (error: any) {
+        toast.error(error.message || "Login failed");
+        throw error;
       }
-
-      // Configure SDK for the selected agent BEFORE login
-      sdkConfigManager.configure(selectedAgentId);
-
-      // Now perform the login
-      const user = await cirisClient.login(username, password);
-
-      // Configure SDK again with the auth token from AuthStore
-      const token = cirisClient.auth.getAccessToken();
-      if (token) {
-        sdkConfigManager.configure(selectedAgentId, token);
-      }
-
-      setUser(user);
-      toast.success(`Welcome, ${user.username || user.user_id}!`);
-      router.push('/');
-    } catch (error: any) {
-      toast.error(error.message || 'Login failed');
-      throw error;
-    }
-  }, [router]);
+    },
+    [router]
+  );
 
   const logout = useCallback(async () => {
     try {
       await cirisClient.logout();
       setUser(null);
-      toast.success('Logged out successfully');
-      router.push('/login');
+      toast.success("Logged out successfully");
+      router.push("/login");
     } catch (error) {
-      console.error('Logout failed:', error);
-      toast.error('Logout failed');
+      console.error("Logout failed:", error);
+      toast.error("Logout failed");
     }
   }, [router]);
 
-  const hasPermission = useCallback((permission: string) => {
-    if (!user) return false;
-    return user.permissions.includes(permission) || user.role === 'SYSTEM_ADMIN';
-  }, [user]);
+  const hasPermission = useCallback(
+    (permission: string) => {
+      if (!user) return false;
+      return user.permissions.includes(permission) || user.role === "SYSTEM_ADMIN";
+    },
+    [user]
+  );
 
-  const hasRole = useCallback((role: string) => {
-    if (!user) return false;
-    const roleHierarchy = ['OBSERVER', 'ADMIN', 'AUTHORITY', 'SYSTEM_ADMIN'];
-    const userRoleIndex = roleHierarchy.indexOf(user.role);
-    const requiredRoleIndex = roleHierarchy.indexOf(role);
-    return userRoleIndex >= requiredRoleIndex;
-  }, [user]);
+  const hasRole = useCallback(
+    (role: string) => {
+      if (!user) return false;
+      const roleHierarchy = ["OBSERVER", "ADMIN", "AUTHORITY", "SYSTEM_ADMIN"];
+      const userRoleIndex = roleHierarchy.indexOf(user.role);
+      const requiredRoleIndex = roleHierarchy.indexOf(role);
+      return userRoleIndex >= requiredRoleIndex;
+    },
+    [user]
+  );
 
   const setToken = useCallback((token: string) => {
     cirisClient.setConfig({ authToken: token });
@@ -120,19 +129,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [managerToken]);
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      login,
-      logout,
-      hasPermission,
-      hasRole,
-      setUser,
-      setToken,
-      managerToken,
-      setManagerToken,
-      isManagerAuthenticated
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        hasPermission,
+        hasRole,
+        setUser,
+        setToken,
+        managerToken,
+        setManagerToken,
+        isManagerAuthenticated,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -141,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
