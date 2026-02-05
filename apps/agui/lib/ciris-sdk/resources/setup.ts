@@ -45,6 +45,35 @@ export interface LLMValidationResponse {
   error?: string | null;
 }
 
+// V1.9.5: Live model listing types
+export interface ModelCapabilities {
+  supports_tools: boolean;
+  supports_streaming: boolean;
+  supports_json_mode: boolean;
+  supports_system_prompt: boolean;
+  supports_vision: boolean;
+}
+
+export interface LiveModelInfo {
+  id: string;
+  display_name: string;
+  ciris_compatible: boolean | null; // true = compatible, false = incompatible, null = unknown
+  ciris_recommended: boolean;
+  tier: string | null; // "default", "fast", "fallback", "premium", "legacy"
+  capabilities: ModelCapabilities | null;
+  context_window: number | null;
+  notes: string | null;
+  source: string; // "live", "static", or "both"
+}
+
+export interface ListModelsResponse {
+  provider: string;
+  models: LiveModelInfo[];
+  total_count: number;
+  source: string; // "live" (API queried) or "static" (fallback)
+  error: string | null; // If live query failed, contains error message
+}
+
 export interface AgentTemplate {
   id: string;
   name: string;
@@ -164,6 +193,26 @@ export class SetupResource extends BaseResource {
    */
   async validateLLM(config: LLMValidationRequest): Promise<LLMValidationResponse> {
     return this.transport.post<LLMValidationResponse>("/v1/setup/validate-llm", config);
+  }
+
+  /**
+   * List available models from a provider's live API (v1.9.5)
+   *
+   * Queries the provider's models API using the provided credentials,
+   * then cross-references with CIRIS compatibility annotations.
+   * Falls back to static capabilities data if the live query fails.
+   *
+   * Models are sorted: recommended > compatible > unknown > incompatible.
+   *
+   * @param config - LLM configuration with provider and API key
+   * @returns List of models with CIRIS compatibility annotations
+   */
+  async listModels(config: LLMValidationRequest): Promise<ListModelsResponse> {
+    const response = await this.transport.post<SuccessResponse<ListModelsResponse>>(
+      "/v1/setup/list-models",
+      config
+    );
+    return response.data;
   }
 
   /**

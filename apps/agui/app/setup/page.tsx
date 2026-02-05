@@ -3,7 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cirisClient } from "../../lib/ciris-sdk";
-import type { LLMProvider, SetupCompleteRequest } from "../../lib/ciris-sdk/resources/setup";
+import type {
+  LLMProvider,
+  SetupCompleteRequest,
+  LiveModelInfo,
+} from "../../lib/ciris-sdk/resources/setup";
 import type { AdapterDiscoveryReport } from "../../lib/ciris-sdk/resources/system";
 import LogoIcon from "../../components/ui/floating/LogoIcon";
 import { AdapterDiscoveryCard, CovenantMetricsConsent } from "../../components/setup";
@@ -26,6 +30,12 @@ export default function SetupWizard() {
   const [apiBase, setApiBase] = useState("");
   const [validatingLLM, setValidatingLLM] = useState(false);
   const [llmValid, setLlmValid] = useState(false);
+
+  // V1.9.5: Live model listing state
+  const [availableModels, setAvailableModels] = useState<LiveModelInfo[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsSource, setModelsSource] = useState<string>("");
+  const [modelsError, setModelsError] = useState<string | null>(null);
 
   // Backup/Secondary LLM (Optional)
   const [enableBackupLLM, setEnableBackupLLM] = useState(false);
@@ -65,6 +75,46 @@ export default function SetupWizard() {
     } catch (error) {
       console.error("Failed to load setup data:", error);
       toast.error("Failed to load setup data");
+    }
+  };
+
+  // V1.9.5: Load available models from provider API
+  const loadModels = async () => {
+    if (!selectedProvider || !apiKey) {
+      setAvailableModels([]);
+      return;
+    }
+
+    setModelsLoading(true);
+    setModelsError(null);
+
+    try {
+      const response = await cirisClient.setup.listModels({
+        provider: selectedProvider,
+        api_key: apiKey,
+        base_url: apiBase || null,
+      });
+
+      setAvailableModels(response.models);
+      setModelsSource(response.source);
+      setModelsError(response.error);
+
+      // Auto-select recommended model if available
+      const recommended = response.models.find(m => m.ciris_recommended);
+      if (recommended && !selectedModel) {
+        setSelectedModel(recommended.id);
+      } else if (response.models.length > 0 && !selectedModel) {
+        setSelectedModel(response.models[0].id);
+      }
+
+      if (response.error) {
+        toast.error(`Using cached models: ${response.error}`);
+      }
+    } catch (error) {
+      console.error("Failed to load models:", error);
+      setModelsError("Failed to load models from provider");
+    } finally {
+      setModelsLoading(false);
     }
   };
 
@@ -345,6 +395,10 @@ export default function SetupWizard() {
                       onClick={() => {
                         setSelectedProvider(p.id);
                         setLlmValid(false);
+                        setAvailableModels([]);
+                        setSelectedModel("");
+                        setModelsSource("");
+                        setModelsError(null);
                       }}
                       className={`p-4 border-2 rounded-lg text-left transition-all ${
                         selectedProvider === p.id
@@ -372,6 +426,9 @@ export default function SetupWizard() {
                     onChange={e => {
                       setApiKey(e.target.value);
                       setLlmValid(false);
+                      setAvailableModels([]);
+                      setSelectedModel("");
+                      setModelsSource("");
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="sk-..."
@@ -380,27 +437,117 @@ export default function SetupWizard() {
                 </div>
               )}
 
-              {/* Model input */}
+              {/* Model selection - V1.9.5: Dynamic dropdown with live model listing */}
               {provider && provider.requires_model && (
                 <div>
-                  <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
-                    Model Name {provider.requires_model && <span className="text-red-500">*</span>}
-                  </label>
-                  <input
-                    id="model"
-                    type="text"
-                    value={selectedModel}
-                    onChange={e => {
-                      setSelectedModel(e.target.value);
-                      setLlmValid(false);
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder={provider.default_model || "Enter model name"}
-                  />
-                  {provider.examples.length > 0 && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Examples: {provider.examples.slice(0, 2).join(", ")}
-                    </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="model" className="block text-sm font-medium text-gray-700">
+                      Model {provider.requires_model && <span className="text-red-500">*</span>}
+                    </label>
+                    {apiKey && (
+                      <button
+                        type="button"
+                        onClick={loadModels}
+                        disabled={modelsLoading}
+                        className="text-sm text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50"
+                      >
+                        {modelsLoading ? "Loading..." : "Refresh Models"}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Show dropdown if models are loaded, otherwise show text input */}
+                  {availableModels.length > 0 ? (
+                    <div className="space-y-2">
+                      <select
+                        id="model"
+                        value={selectedModel}
+                        onChange={e => {
+                          setSelectedModel(e.target.value);
+                          setLlmValid(false);
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                      >
+                        <option value="">Select a model...</option>
+                        {availableModels.map(model => (
+                          <option key={model.id} value={model.id}>
+                            {model.ciris_recommended ? "★ " : ""}
+                            {model.display_name}
+                            {model.ciris_compatible === true
+                              ? " ✓"
+                              : model.ciris_compatible === false
+                                ? " ✗"
+                                : ""}
+                            {model.tier ? ` (${model.tier})` : ""}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Model info */}
+                      {selectedModel && (
+                        <div className="text-xs text-gray-500">
+                          {(() => {
+                            const model = availableModels.find(m => m.id === selectedModel);
+                            if (!model) return null;
+                            return (
+                              <div className="flex flex-wrap gap-2">
+                                {model.ciris_recommended && (
+                                  <span className="text-green-600 font-medium">★ Recommended</span>
+                                )}
+                                {model.ciris_compatible === true && (
+                                  <span className="text-green-600">✓ CIRIS Compatible</span>
+                                )}
+                                {model.ciris_compatible === false && (
+                                  <span className="text-red-600">✗ Not Compatible</span>
+                                )}
+                                {model.context_window && (
+                                  <span>Context: {model.context_window.toLocaleString()}</span>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Source indicator */}
+                      {modelsSource && (
+                        <p className="text-xs text-gray-400">
+                          {modelsSource === "live"
+                            ? "Models from provider API"
+                            : "Using cached model list"}
+                          {modelsError && ` • ${modelsError}`}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <input
+                        id="model"
+                        type="text"
+                        value={selectedModel}
+                        onChange={e => {
+                          setSelectedModel(e.target.value);
+                          setLlmValid(false);
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder={provider.default_model || "Enter model name"}
+                      />
+                      {provider.examples.length > 0 && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Examples: {provider.examples.slice(0, 2).join(", ")}
+                        </p>
+                      )}
+                      {apiKey && !modelsLoading && (
+                        <button
+                          type="button"
+                          onClick={loadModels}
+                          className="text-sm text-indigo-600 hover:text-indigo-800 underline"
+                        >
+                          Load available models from {provider.name}
+                        </button>
+                      )}
+                      {modelsLoading && <p className="text-sm text-gray-500">Loading models...</p>}
+                    </div>
                   )}
                 </div>
               )}
