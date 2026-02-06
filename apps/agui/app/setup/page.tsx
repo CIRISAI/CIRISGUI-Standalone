@@ -197,6 +197,17 @@ export default function SetupWizard() {
   };
 
   const completeSetup = async () => {
+    // Debug logging for test automation
+    const debugState = {
+      llmValid,
+      adminPasswordLen: adminPassword?.length || 0,
+      adminPasswordMatch: adminPassword === adminPasswordConfirm,
+      usernameSet: (username?.length || 0) > 0,
+      passwordLen: password?.length || 0,
+      passwordMatch: password === passwordConfirm,
+    };
+    console.log("[completeSetup] Called with state:", JSON.stringify(debugState));
+
     // Validate admin password
     if (adminPassword !== adminPasswordConfirm) {
       toast.error("Admin passwords do not match");
@@ -259,8 +270,9 @@ export default function SetupWizard() {
         agent_port: 8080,
       };
 
+      console.log("[completeSetup] Calling API...");
       const response = await cirisClient.setup.complete(config);
-      console.log("Setup complete:", response.message);
+      console.log("[completeSetup] API response:", response.message, response.status);
 
       // Save the agent template name for AgentContext to use
       localStorage.setItem("selectedAgentName", SELECTED_TEMPLATE_NAME);
@@ -269,8 +281,10 @@ export default function SetupWizard() {
       setCurrentStep("complete");
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Setup failed";
+      console.error("[completeSetup] Error:", errorMessage, error);
       toast.error(errorMessage);
     } finally {
+      console.log("[completeSetup] Finally block, setting loading=false");
       setLoading(false);
     }
   };
@@ -497,7 +511,9 @@ export default function SetupWizard() {
                         value={selectedModel}
                         onChange={e => {
                           setSelectedModel(e.target.value);
-                          setLlmValid(false);
+                          // Don't reset llmValid when selecting from dropdown
+                          // The dropdown only appears when models were loaded from API,
+                          // which means the API key was already validated
                         }}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
                       >
