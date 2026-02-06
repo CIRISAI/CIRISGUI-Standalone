@@ -80,11 +80,27 @@ export default function SetupWizard() {
 
   // V1.9.5: Load available models from provider API
   const loadModels = async () => {
-    if (!selectedProvider || !apiKey) {
+    console.log("[loadModels] Called with:", {
+      selectedProvider,
+      apiKeyLength: apiKey?.length,
+      apiBase,
+    });
+
+    if (!selectedProvider) {
+      console.warn("[loadModels] No provider selected");
+      toast.error("Please select a provider first");
       setAvailableModels([]);
       return;
     }
 
+    if (!apiKey) {
+      console.warn("[loadModels] No API key entered");
+      toast.error("Please enter an API key first");
+      setAvailableModels([]);
+      return;
+    }
+
+    console.log("[loadModels] Starting API call...");
     setModelsLoading(true);
     setModelsError(null);
 
@@ -95,6 +111,12 @@ export default function SetupWizard() {
         base_url: apiBase || null,
       });
 
+      console.log("[loadModels] API response:", {
+        modelCount: response.models?.length,
+        source: response.source,
+        error: response.error,
+      });
+
       setAvailableModels(response.models);
       setModelsSource(response.source);
       setModelsError(response.error);
@@ -103,16 +125,23 @@ export default function SetupWizard() {
       const recommended = response.models.find(m => m.ciris_recommended);
       if (recommended && !selectedModel) {
         setSelectedModel(recommended.id);
+        console.log("[loadModels] Auto-selected recommended model:", recommended.id);
       } else if (response.models.length > 0 && !selectedModel) {
         setSelectedModel(response.models[0].id);
+        console.log("[loadModels] Auto-selected first model:", response.models[0].id);
       }
 
       if (response.error) {
         toast.error(`Using cached models: ${response.error}`);
+      } else {
+        toast.success(`Loaded ${response.models.length} models from ${response.source}`);
       }
     } catch (error) {
-      console.error("Failed to load models:", error);
-      setModelsError("Failed to load models from provider");
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error("[loadModels] Failed:", { message: errorMessage, stack: errorStack, error });
+      setModelsError(`Failed to load models: ${errorMessage}`);
+      toast.error(`Failed to load models: ${errorMessage}`);
     } finally {
       setModelsLoading(false);
     }

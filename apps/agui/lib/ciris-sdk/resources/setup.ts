@@ -208,11 +208,8 @@ export class SetupResource extends BaseResource {
    * @returns List of models with CIRIS compatibility annotations
    */
   async listModels(config: LLMValidationRequest): Promise<ListModelsResponse> {
-    const response = await this.transport.post<SuccessResponse<ListModelsResponse>>(
-      "/v1/setup/list-models",
-      config
-    );
-    return response.data;
+    // Note: Transport already unwraps SuccessResponse, so we get ListModelsResponse directly
+    return this.transport.post<ListModelsResponse>("/v1/setup/list-models", config);
   }
 
   /**

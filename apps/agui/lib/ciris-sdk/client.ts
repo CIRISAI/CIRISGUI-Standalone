@@ -52,10 +52,16 @@ export class CIRISClient {
     let defaultBaseURL: string;
 
     if (typeof window !== "undefined") {
-      // Client-side
-      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-        // Development: use environment variable or default
-        defaultBaseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+      // Client-side: use same origin to avoid CORS issues
+      // This works for both dev (localhost/127.0.0.1) and production
+      if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+        defaultBaseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
+      } else if (
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+      ) {
+        // Development: use same origin (handles both localhost and 127.0.0.1)
+        defaultBaseURL = window.location.origin;
       } else {
         // Production: use relative path (same origin) to avoid CORS
         defaultBaseURL = "";
@@ -216,13 +222,18 @@ export class CIRISClient {
 // Create a singleton instance with proper defaults
 // This will be reconfigured by SDKConfigManager when agent is selected
 const createDefaultClient = () => {
-  // For browser environments, use relative path in production to avoid CORS
+  // For browser environments, use same origin to avoid CORS issues
   let baseURL: string;
   if (typeof window !== "undefined") {
-    // Client-side
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      // Development: use environment variable or default
-      baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+    // Client-side: use same origin (handles both localhost and 127.0.0.1)
+    if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+      baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
+    } else if (
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    ) {
+      // Development: use same origin to avoid localhost vs 127.0.0.1 CORS issues
+      baseURL = window.location.origin;
     } else {
       // Production: use relative path (same origin)
       baseURL = "";
