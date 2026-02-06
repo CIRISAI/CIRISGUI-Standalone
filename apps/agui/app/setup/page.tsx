@@ -135,6 +135,10 @@ export default function SetupWizard() {
         toast.error(`Using cached models: ${response.error}`);
       } else {
         toast.success(`Loaded ${response.models.length} models from ${response.source}`);
+        // If we got live models, the API key is validated - no need for separate Test Connection
+        if (response.source === "live" && response.models.length > 0) {
+          setLlmValid(true);
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
