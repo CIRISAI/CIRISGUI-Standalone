@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cirisClient } from "../../lib/ciris-sdk";
 import type {
   LLMProvider,
+  AgentTemplate,
   SetupCompleteRequest,
   LiveModelInfo,
 } from "../../lib/ciris-sdk/resources/setup";
@@ -56,9 +57,13 @@ export default function SetupWizard() {
   const [covenantMetricsConsent, setCovenantMetricsConsent] = useState(false);
   const [adapterReport, setAdapterReport] = useState<AdapterDiscoveryReport | null>(null);
 
-  // Always use "ally" template - no user selection
-  const SELECTED_TEMPLATE_ID = "ally";
-  const SELECTED_TEMPLATE_NAME = "Ally";
+  // V1.9.7: Template selection (Advanced Settings)
+  const [templates, setTemplates] = useState<AgentTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("default");
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+
+  // Get selected template name for display
+  const selectedTemplateName = templates.find(t => t.id === selectedTemplateId)?.name || "Default";
 
   // Load providers
   useEffect(() => {
@@ -67,10 +72,25 @@ export default function SetupWizard() {
 
   const loadProviders = async () => {
     try {
-      const providersRes = await cirisClient.setup.getProviders();
+      const [providersRes, templatesRes] = await Promise.all([
+        cirisClient.setup.getProviders(),
+        cirisClient.setup.getTemplates(),
+      ]);
       setProviders(providersRes);
       if (providersRes.length > 0) {
         setSelectedProvider(providersRes[0].id);
+      }
+      setTemplates(templatesRes);
+      // Check if there's a CLI-specified template from the config endpoint
+      try {
+        const config = await cirisClient.setup.getConfig();
+        if (config.template_id && config.template_id !== "default") {
+          setSelectedTemplateId(config.template_id);
+          // If CLI specified a non-default template, show advanced settings
+          setShowAdvancedSettings(true);
+        }
+      } catch {
+        // Config endpoint may not be available during first-run
       }
     } catch (error) {
       console.error("Failed to load setup data:", error);
@@ -256,7 +276,7 @@ export default function SetupWizard() {
         backup_llm_api_key: enableBackupLLM && backupApiKey ? backupApiKey : null,
         backup_llm_base_url: enableBackupLLM && backupApiBase ? backupApiBase : null,
         backup_llm_model: enableBackupLLM && backupModel ? backupModel : null,
-        template_id: SELECTED_TEMPLATE_ID,
+        template_id: selectedTemplateId,
         enabled_adapters: enabledAdapters,
         adapter_config: adapterConfig,
         // V1.9.3: Covenant Metrics
@@ -275,8 +295,8 @@ export default function SetupWizard() {
       console.log("[completeSetup] API response:", response.message, response.status);
 
       // Save the agent template name for AgentContext to use
-      localStorage.setItem("selectedAgentName", SELECTED_TEMPLATE_NAME);
-      localStorage.setItem("selectedAgentId", SELECTED_TEMPLATE_ID);
+      localStorage.setItem("selectedAgentName", selectedTemplateName);
+      localStorage.setItem("selectedAgentId", selectedTemplateId);
 
       setCurrentStep("complete");
     } catch (error: unknown) {
@@ -758,6 +778,46 @@ export default function SetupWizard() {
                     toast.success(`Adapter ${name} is now ready!`);
                   }}
                 />
+              </div>
+
+              {/* Section 3: Advanced Settings (collapsible) */}
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium"
+                >
+                  <span className="text-lg">{showAdvancedSettings ? "▼" : "▶"}</span>
+                  Advanced Settings
+                </button>
+
+                {showAdvancedSettings && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Agent Template</h4>
+                    <p className="text-xs text-gray-600 mb-3">
+                      Choose a personality template for your agent. Most users should use the
+                      default.
+                    </p>
+                    <select
+                      value={selectedTemplateId}
+                      onChange={e => setSelectedTemplateId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-sm"
+                    >
+                      {templates.map(template => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}
+                          {template.id === "default" || template.id === "ally"
+                            ? " (Recommended)"
+                            : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedTemplateId && templates.find(t => t.id === selectedTemplateId) && (
+                      <p className="mt-2 text-xs text-gray-500">
+                        {templates.find(t => t.id === selectedTemplateId)?.description}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button
