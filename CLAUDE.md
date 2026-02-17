@@ -286,13 +286,39 @@ ws.onopen = () => console.log('Connected');
 - **TypeScript**: https://www.typescriptlang.org/docs
 - **Tailwind CSS**: https://tailwindcss.com/docs
 
+## Setup Wizard Flows (v2.0)
+
+The setup wizard supports two deployment modes:
+
+### Standard Setup (BYOK - Bring Your Own Key)
+For personal use, development, and self-hosted deployments:
+1. **Welcome** - Choose setup mode
+2. **LLM Configuration** - Enter your own API key (OpenAI, Anthropic, Groq, etc.)
+3. **Optional Features** - Covenant Metrics opt-in, adapter selection, template choice
+4. **Account Creation** - Create admin and user accounts
+5. **Complete** - Login with created credentials
+
+### Connect to Node
+For organization-managed deployments with CIRISNode:
+1. **Welcome** - Choose "Connect to Node"
+2. **Node Authorization** - Device auth (RFC 8628) with CIRISPortal
+3. **LLM Configuration** - Configure LLM (API key still required)
+4. **Complete** - Agent connected to organization's node
+
+Node flow features:
+- Organization-managed templates provisioned via CIRISRegistry
+- Centralized deferral routing via CIRISNode
+- SSO authentication managed through CIRISPortal
+- Signing key provisioned automatically
+
 ## Key Differences from Main CIRISGUI
 
 This standalone version differs from the main CIRISGUI repository:
-- **No OAuth**: Simple username/password authentication only
+- **No OAuth**: Simple username/password authentication only (except via Node flow)
 - **No CIRISManager**: Direct API connection, no manager integration
 - **Static Export**: Optimized for static hosting and localhost use
 - **Simplified Deployment**: Single container or static files
 - **Focused Features**: Core agent interaction without enterprise features
+- **Node Flow Support**: Can connect to CIRISNode for managed deployments
 
 Remember: This standalone GUI is designed for simple, local CIRIS agent interactions!

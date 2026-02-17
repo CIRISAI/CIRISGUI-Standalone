@@ -126,6 +126,19 @@ export interface SetupCompleteRequest {
 
   // Application Configuration
   agent_port: number;
+
+  // Node Connection (set by "Connect to Node" device auth flow)
+  node_url?: string | null;
+  identity_template?: string | null;
+  stewardship_tier?: number | null;
+  approved_adapters?: string[] | null;
+  org_id?: string | null;
+  signing_key_provisioned?: boolean;
+  provisioned_signing_key_b64?: string | null;
+
+  // CIRISVerify (optional, set by node flow)
+  verify_binary_path?: string | null;
+  verify_require_hardware?: boolean;
 }
 
 export interface SetupCompleteResponse {
@@ -152,6 +165,72 @@ export interface SetupConfigResponse {
   template_id?: string | null;
   enabled_adapters: string[];
   agent_port: number;
+}
+
+// ============================================================================
+// Connect to Node (Device Auth Flow) - RFC 8628
+// ============================================================================
+
+export type DeviceAuthStatus = "idle" | "connecting" | "waiting" | "complete" | "error";
+
+export interface DeviceAuthState {
+  nodeUrl: string;
+  portalUrl: string;
+  verificationUri: string;
+  deviceCode: string;
+  userCode: string;
+  status: DeviceAuthStatus;
+  expiresIn: number;
+  interval: number;
+  // Provisioned data (set after user completes in Portal)
+  provisionedTemplate?: string | null;
+  provisionedAdapters?: string[];
+  signingKeyB64?: string | null;
+  keyId?: string | null;
+  orgId?: string | null;
+  stewardshipTier?: number | null;
+  error?: string | null;
+  // Node manifest for display
+  nodeManifest?: Record<string, string>;
+}
+
+export interface ConnectNodeRequest {
+  node_url: string;
+}
+
+export interface ConnectNodeResponse {
+  verification_uri: string;
+  device_code: string;
+  user_code: string;
+  expires_in: number;
+  interval: number;
+  portal_url: string;
+}
+
+export interface ConnectNodeStatusResponse {
+  status: "pending" | "complete" | "error";
+  provisioned_template?: string | null;
+  approved_adapters?: string[];
+  signing_key_b64?: string | null;
+  key_id?: string | null;
+  org_id?: string | null;
+  stewardship_tier?: number | null;
+  node_url?: string | null;
+  error?: string | null;
+}
+
+// ============================================================================
+// CIRISVerify Setup (Node flow only)
+// ============================================================================
+
+export interface VerifySetupState {
+  enabled: boolean;
+  downloading: boolean;
+  downloaded: boolean;
+  binaryPath?: string | null;
+  version?: string | null;
+  requireHardware: boolean;
+  error?: string | null;
 }
 
 /**
@@ -284,5 +363,47 @@ export class SetupResource extends BaseResource {
    */
   async updateConfig(config: SetupCompleteRequest): Promise<SetupCompleteResponse> {
     return this.transport.put<SetupCompleteResponse>("/v1/setup/config", config);
+  }
+
+  // ============================================================================
+  // Connect to Node (Device Auth Flow) - RFC 8628
+  // ============================================================================
+
+  /**
+   * Initiate device authorization flow with CIRISPortal
+   *
+   * Contacts the Portal at the given URL and initiates RFC 8628 device auth.
+   * Returns a user code to display and a verification URI for the user to visit.
+   *
+   * @param nodeUrl - Portal URL (e.g., https://portal.ciris.ai)
+   * @returns Device auth response with user code and verification URI
+   */
+  async connectNode(nodeUrl: string): Promise<ConnectNodeResponse> {
+    return this.transport.post<ConnectNodeResponse>("/v1/setup/connect-node", {
+      node_url: nodeUrl,
+    });
+  }
+
+  /**
+   * Poll for device authorization completion
+   *
+   * Checks if the user has completed authorization in the browser.
+   * Call this at the interval specified in connectNode response.
+   *
+   * @param deviceCode - Device code from connectNode response
+   * @param portalUrl - Portal URL used in connectNode
+   * @returns Status response with provisioned data when complete
+   */
+  async connectNodeStatus(
+    deviceCode: string,
+    portalUrl: string
+  ): Promise<ConnectNodeStatusResponse> {
+    const params = new URLSearchParams({
+      device_code: deviceCode,
+      portal_url: portalUrl,
+    });
+    return this.transport.get<ConnectNodeStatusResponse>(
+      `/v1/setup/connect-node/status?${params.toString()}`
+    );
   }
 }

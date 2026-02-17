@@ -8,21 +8,44 @@ import type {
   AgentTemplate,
   SetupCompleteRequest,
   LiveModelInfo,
+  DeviceAuthState,
 } from "../../lib/ciris-sdk/resources/setup";
 import type { AdapterDiscoveryReport } from "../../lib/ciris-sdk/resources/system";
 import LogoIcon from "../../components/ui/floating/LogoIcon";
-import { AdapterDiscoveryCard, CovenantMetricsConsent } from "../../components/setup";
+import { AdapterDiscoveryCard, CovenantMetricsConsent, NodeAuthStep } from "../../components/setup";
 import toast from "react-hot-toast";
 
-// V1.9.3: Added optional_features step between llm and users
-type Step = "welcome" | "llm" | "optional_features" | "users" | "complete";
-const STEP_ORDER: Step[] = ["welcome", "llm", "optional_features", "users", "complete"];
+// V2.0: Added node_auth step for Connect to Node flow
+type Step = "welcome" | "node_auth" | "llm" | "optional_features" | "users" | "complete";
+// Normal flow steps (excludes node_auth)
+const NORMAL_STEP_ORDER: Step[] = ["welcome", "llm", "optional_features", "users", "complete"];
+// Node flow steps (includes node_auth, skips optional_features and users)
+const NODE_STEP_ORDER: Step[] = ["welcome", "node_auth", "llm", "complete"];
+
+// Default device auth state
+const DEFAULT_DEVICE_AUTH: DeviceAuthState = {
+  nodeUrl: "",
+  portalUrl: "",
+  verificationUri: "",
+  deviceCode: "",
+  userCode: "",
+  status: "idle",
+  expiresIn: 900,
+  interval: 5,
+};
 
 export default function SetupWizard() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [providers, setProviders] = useState<LLMProvider[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // V2.0: Node flow state
+  const [isNodeFlow, setIsNodeFlow] = useState(false);
+  const [deviceAuth, setDeviceAuth] = useState<DeviceAuthState>(DEFAULT_DEVICE_AUTH);
+
+  // Get the appropriate step order based on flow type
+  const stepOrder = isNodeFlow ? NODE_STEP_ORDER : NORMAL_STEP_ORDER;
 
   // Form state - Primary LLM
   const [selectedProvider, setSelectedProvider] = useState("");
@@ -220,35 +243,50 @@ export default function SetupWizard() {
     // Debug logging for test automation
     const debugState = {
       llmValid,
+      isNodeFlow,
       adminPasswordLen: adminPassword?.length || 0,
       adminPasswordMatch: adminPassword === adminPasswordConfirm,
       usernameSet: (username?.length || 0) > 0,
       passwordLen: password?.length || 0,
       passwordMatch: password === passwordConfirm,
+      deviceAuthStatus: deviceAuth.status,
     };
     console.log("[completeSetup] Called with state:", JSON.stringify(debugState));
 
-    // Validate admin password
-    if (adminPassword !== adminPasswordConfirm) {
-      toast.error("Admin passwords do not match");
-      return;
-    }
-    if (adminPassword.length < 8) {
-      toast.error("Admin password must be at least 8 characters");
-      return;
-    }
-    // Validate user passwords
-    if (password !== passwordConfirm) {
-      toast.error("User passwords do not match");
-      return;
-    }
-    if (password.length < 8) {
-      toast.error("User password must be at least 8 characters");
-      return;
-    }
-    if (!llmValid) {
-      toast.error("Please validate your LLM configuration first");
-      return;
+    // Node flow validation is simpler - just need LLM and completed device auth
+    if (isNodeFlow) {
+      if (!llmValid) {
+        toast.error("Please validate your LLM configuration first");
+        return;
+      }
+      if (deviceAuth.status !== "complete") {
+        toast.error("Please complete device authorization first");
+        return;
+      }
+    } else {
+      // Standard flow validation
+      // Validate admin password
+      if (adminPassword !== adminPasswordConfirm) {
+        toast.error("Admin passwords do not match");
+        return;
+      }
+      if (adminPassword.length < 8) {
+        toast.error("Admin password must be at least 8 characters");
+        return;
+      }
+      // Validate user passwords
+      if (password !== passwordConfirm) {
+        toast.error("User passwords do not match");
+        return;
+      }
+      if (password.length < 8) {
+        toast.error("User password must be at least 8 characters");
+        return;
+      }
+      if (!llmValid) {
+        toast.error("Please validate your LLM configuration first");
+        return;
+      }
     }
 
     setLoading(true);
@@ -257,6 +295,14 @@ export default function SetupWizard() {
       const enabledAdapters = ["api"]; // Always include API adapter
       if (covenantMetricsConsent) {
         enabledAdapters.push("ciris_covenant_metrics");
+      }
+      // Add approved adapters from node flow
+      if (isNodeFlow && deviceAuth.provisionedAdapters) {
+        for (const adapter of deviceAuth.provisionedAdapters) {
+          if (!enabledAdapters.includes(adapter)) {
+            enabledAdapters.push(adapter);
+          }
+        }
       }
 
       // Build adapter config
@@ -267,6 +313,11 @@ export default function SetupWizard() {
         adapterConfig.CIRIS_COVENANT_METRICS_TRACE_LEVEL = "detailed";
       }
 
+      // For node flow, generate random passwords since user auth is via Portal
+      const nodeFlowPassword = isNodeFlow
+        ? `NodeFlow_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`
+        : "";
+
       const config: SetupCompleteRequest = {
         llm_provider: selectedProvider,
         llm_api_key: apiKey,
@@ -276,7 +327,11 @@ export default function SetupWizard() {
         backup_llm_api_key: enableBackupLLM && backupApiKey ? backupApiKey : null,
         backup_llm_base_url: enableBackupLLM && backupApiBase ? backupApiBase : null,
         backup_llm_model: enableBackupLLM && backupModel ? backupModel : null,
-        template_id: selectedTemplateId,
+        // Template: use provisioned template in node flow, or selected template
+        template_id:
+          isNodeFlow && deviceAuth.provisionedTemplate
+            ? deviceAuth.provisionedTemplate
+            : selectedTemplateId,
         enabled_adapters: enabledAdapters,
         adapter_config: adapterConfig,
         // V1.9.3: Covenant Metrics
@@ -284,10 +339,19 @@ export default function SetupWizard() {
         covenant_metrics_consent_timestamp: covenantMetricsConsent
           ? new Date().toISOString()
           : undefined,
-        admin_username: username,
-        admin_password: password,
-        system_admin_password: adminPassword,
+        // User accounts: use form values for standard flow, generate for node flow
+        admin_username: isNodeFlow ? "node_admin" : username,
+        admin_password: isNodeFlow ? nodeFlowPassword : password,
+        system_admin_password: isNodeFlow ? nodeFlowPassword : adminPassword,
         agent_port: 8080,
+        // Node flow specific fields
+        node_url: isNodeFlow ? deviceAuth.nodeUrl : null,
+        identity_template: isNodeFlow ? deviceAuth.provisionedTemplate : null,
+        stewardship_tier: isNodeFlow ? deviceAuth.stewardshipTier : null,
+        approved_adapters: isNodeFlow ? deviceAuth.provisionedAdapters : null,
+        org_id: isNodeFlow ? deviceAuth.orgId : null,
+        signing_key_provisioned: isNodeFlow && !!deviceAuth.signingKeyB64,
+        provisioned_signing_key_b64: isNodeFlow ? deviceAuth.signingKeyB64 : null,
       };
 
       console.log("[completeSetup] Calling API...");
@@ -295,8 +359,16 @@ export default function SetupWizard() {
       console.log("[completeSetup] API response:", response.message, response.status);
 
       // Save the agent template name for AgentContext to use
-      localStorage.setItem("selectedAgentName", selectedTemplateName);
-      localStorage.setItem("selectedAgentId", selectedTemplateId);
+      const finalTemplateId =
+        isNodeFlow && deviceAuth.provisionedTemplate
+          ? deviceAuth.provisionedTemplate
+          : selectedTemplateId;
+      const finalTemplateName =
+        isNodeFlow && deviceAuth.provisionedTemplate
+          ? deviceAuth.provisionedTemplate
+          : selectedTemplateName;
+      localStorage.setItem("selectedAgentName", finalTemplateName);
+      localStorage.setItem("selectedAgentId", finalTemplateId);
 
       setCurrentStep("complete");
     } catch (error: unknown) {
@@ -340,39 +412,44 @@ export default function SetupWizard() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome to CIRIS</h1>
         </div>
 
-        {/* Progress indicator - 4 steps (excluding complete) */}
+        {/* Progress indicator - dynamic based on flow type */}
         {currentStep !== "complete" && (
           <div className="mb-8">
             <div className="flex items-center justify-center space-x-2 sm:space-x-4">
-              {STEP_ORDER.filter(s => s !== "complete").map((step, idx) => {
-                const currentIdx = STEP_ORDER.indexOf(currentStep);
-                const stepIdx = STEP_ORDER.indexOf(step);
-                return (
-                  <div key={step} className="flex items-center">
-                    <div
-                      className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full text-sm sm:text-base ${
-                        currentStep === step
-                          ? "bg-indigo-600 text-white"
-                          : stepIdx < currentIdx
-                            ? "bg-green-500 text-white"
-                            : "bg-gray-200 text-gray-500"
-                      }`}
-                    >
-                      {stepIdx < currentIdx ? "✓" : idx + 1}
-                    </div>
-                    {idx < 3 && (
+              {stepOrder
+                .filter(s => s !== "complete")
+                .map((step, idx) => {
+                  const currentIdx = stepOrder.indexOf(currentStep);
+                  const stepIdx = stepOrder.indexOf(step);
+                  const totalSteps = stepOrder.filter(s => s !== "complete").length;
+                  return (
+                    <div key={step} className="flex items-center">
                       <div
-                        className={`w-6 sm:w-12 h-1 ${
-                          stepIdx < currentIdx ? "bg-green-500" : "bg-gray-200"
+                        className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full text-sm sm:text-base ${
+                          currentStep === step
+                            ? "bg-indigo-600 text-white"
+                            : stepIdx < currentIdx
+                              ? "bg-green-500 text-white"
+                              : "bg-gray-200 text-gray-500"
                         }`}
-                      />
-                    )}
-                  </div>
-                );
-              })}
+                      >
+                        {stepIdx < currentIdx ? "✓" : idx + 1}
+                      </div>
+                      {idx < totalSteps - 1 && (
+                        <div
+                          className={`w-6 sm:w-12 h-1 ${
+                            stepIdx < currentIdx ? "bg-green-500" : "bg-gray-200"
+                          }`}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
             </div>
             <div className="flex justify-center mt-2 text-xs text-gray-500">
-              Step {STEP_ORDER.indexOf(currentStep) + 1} of 4
+              Step {stepOrder.indexOf(currentStep) + 1} of{" "}
+              {stepOrder.filter(s => s !== "complete").length}
+              {isNodeFlow && <span className="ml-2 text-indigo-600">(Node Flow)</span>}
             </div>
           </div>
         )}
@@ -386,36 +463,66 @@ export default function SetupWizard() {
               <div className="prose prose-indigo max-w-none">
                 <p className="text-gray-700 leading-relaxed">
                   CIRIS is a next-generation AI assistant that prioritizes cognitive integrity,
-                  transparency, and ethical decision-making. This setup wizard will help you
-                  configure your instance in just a few steps.
+                  transparency, and ethical decision-making. Choose how you'd like to set up your
+                  agent:
                 </p>
 
-                <h3 className="text-lg font-semibold text-gray-900 mt-6 mb-3">
-                  What you'll configure:
-                </h3>
-                <ul className="space-y-2">
-                  <li className="flex items-start">
-                    <span className="text-indigo-600 mr-2">•</span>
-                    <span>
-                      <strong>LLM API Key</strong> - An API key from OpenAI, Anthropic, or another
-                      supported provider
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-indigo-600 mr-2">•</span>
-                    <span>
-                      <strong>Admin Password</strong> - A secure password (min 8 characters) for the
-                      default admin account
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-indigo-600 mr-2">•</span>
-                    <span>
-                      <strong>Your Account</strong> - Username and password for your personal
-                      account
-                    </span>
-                  </li>
-                </ul>
+                {/* Setup mode selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 not-prose">
+                  {/* Standard Setup */}
+                  <button
+                    onClick={() => {
+                      setIsNodeFlow(false);
+                      setCurrentStep("llm");
+                    }}
+                    className={`p-6 border-2 rounded-lg text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
+                      !isNodeFlow ? "border-indigo-600 bg-indigo-50" : "border-gray-200"
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                        <span className="text-indigo-600 text-xl">🔑</span>
+                      </div>
+                      <h3 className="font-semibold text-gray-900">Standard Setup</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Configure your own LLM API key and create local user accounts. Best for
+                      personal use or development.
+                    </p>
+                    <ul className="text-xs text-gray-500 space-y-1">
+                      <li>• Bring your own API key (OpenAI, Anthropic, etc.)</li>
+                      <li>• Create local admin and user accounts</li>
+                      <li>• Full control over configuration</li>
+                    </ul>
+                  </button>
+
+                  {/* Connect to Node */}
+                  <button
+                    onClick={() => {
+                      setIsNodeFlow(true);
+                      setCurrentStep("node_auth");
+                    }}
+                    className={`p-6 border-2 rounded-lg text-left transition-all hover:border-purple-300 hover:bg-purple-50 ${
+                      isNodeFlow ? "border-purple-600 bg-purple-50" : "border-gray-200"
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <span className="text-purple-600 text-xl">🌐</span>
+                      </div>
+                      <h3 className="font-semibold text-gray-900">Connect to Node</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Connect to your organization's CIRISNode for managed deployment and
+                      centralized agent governance.
+                    </p>
+                    <ul className="text-xs text-gray-500 space-y-1">
+                      <li>• Organization-managed templates</li>
+                      <li>• Centralized deferral routing</li>
+                      <li>• Single sign-on with CIRISPortal</li>
+                    </ul>
+                  </button>
+                </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
                   <p className="text-sm text-blue-900">
@@ -424,13 +531,41 @@ export default function SetupWizard() {
                   </p>
                 </div>
               </div>
+            </div>
+          )}
 
-              <button
-                onClick={() => setCurrentStep("llm")}
-                className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-              >
-                Continue to LLM Setup →
-              </button>
+          {/* Step 1b: Node Authorization (Node flow only) */}
+          {currentStep === "node_auth" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Connect to Node</h2>
+                <button
+                  onClick={() => {
+                    setIsNodeFlow(false);
+                    setDeviceAuth(DEFAULT_DEVICE_AUTH);
+                    setCurrentStep("welcome");
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ← Back
+                </button>
+              </div>
+
+              <NodeAuthStep
+                deviceAuth={deviceAuth}
+                onDeviceAuthChange={setDeviceAuth}
+                onComplete={() => setCurrentStep("llm")}
+              />
+
+              {/* Manual continue button (only if complete) */}
+              {deviceAuth.status === "complete" && (
+                <button
+                  onClick={() => setCurrentStep("llm")}
+                  className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                >
+                  Continue to LLM Setup →
+                </button>
+              )}
             </div>
           )}
 
@@ -440,7 +575,7 @@ export default function SetupWizard() {
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">Configure Your LLM</h2>
                 <button
-                  onClick={() => setCurrentStep("welcome")}
+                  onClick={() => setCurrentStep(isNodeFlow ? "node_auth" : "welcome")}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   ← Back
@@ -731,11 +866,18 @@ export default function SetupWizard() {
               </div>
 
               <button
-                onClick={() => setCurrentStep("optional_features")}
+                onClick={() => {
+                  if (isNodeFlow) {
+                    // Node flow: Skip optional features and users, go directly to complete
+                    completeSetup();
+                  } else {
+                    setCurrentStep("optional_features");
+                  }
+                }}
                 disabled={!llmValid}
                 className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
-                Continue to Optional Features →
+                {isNodeFlow ? "Complete Setup" : "Continue to Optional Features →"}
               </button>
             </div>
           )}
@@ -1001,22 +1143,53 @@ export default function SetupWizard() {
                 <span className="text-4xl">✓</span>
               </div>
               <h2 className="text-3xl font-bold text-gray-900">Setup Complete!</h2>
-              <p className="text-gray-600 max-w-md mx-auto">
-                Your CIRIS instance is now configured and ready to use. You can log in with your
-                credentials.
-              </p>
-              <button
-                onClick={() => router.push("/login")}
-                className="px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-              >
-                Go to Login →
-              </button>
+
+              {isNodeFlow ? (
+                <>
+                  <p className="text-gray-600 max-w-md mx-auto">
+                    Your agent is now connected to <strong>{deviceAuth.nodeUrl}</strong> and ready
+                    to use. Authentication is managed through CIRISPortal.
+                  </p>
+                  {deviceAuth.orgId && (
+                    <p className="text-sm text-gray-500">Organization: {deviceAuth.orgId}</p>
+                  )}
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button
+                      onClick={() => window.open(deviceAuth.portalUrl, "_blank")}
+                      className="px-8 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                    >
+                      Open Portal
+                    </button>
+                    <button
+                      onClick={() => router.push("/dashboard")}
+                      className="px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                    >
+                      Go to Dashboard →
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-600 max-w-md mx-auto">
+                    Your CIRIS instance is now configured and ready to use. You can log in with your
+                    credentials.
+                  </p>
+                  <button
+                    onClick={() => router.push("/login")}
+                    className="px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                  >
+                    Go to Login →
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-8 text-sm text-gray-500">CIRIS v1.0 • Standalone Mode</div>
+        <div className="text-center mt-8 text-sm text-gray-500">
+          CIRIS v2.0 • {isNodeFlow ? "Node Connected" : "Standalone Mode"}
+        </div>
       </div>
     </div>
   );
