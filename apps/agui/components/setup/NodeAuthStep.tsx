@@ -126,7 +126,7 @@ export function NodeAuthStep({ deviceAuth, onDeviceAuthChange, onComplete }: Nod
         ...deviceAuth,
         nodeUrl: portalUrl,
         portalUrl: response.portal_url || portalUrl,
-        verificationUri: response.verification_uri,
+        verificationUri: response.verification_uri_complete,
         deviceCode: response.device_code,
         userCode: response.user_code,
         expiresIn: response.expires_in,
@@ -136,7 +136,7 @@ export function NodeAuthStep({ deviceAuth, onDeviceAuthChange, onComplete }: Nod
       });
 
       // Open verification URI in new tab
-      window.open(response.verification_uri, "_blank");
+      window.open(response.verification_uri_complete, "_blank");
       toast.success("Opening authorization page in new tab...");
     } catch (error) {
       console.error("[NodeAuth] Error:", error);
@@ -176,12 +176,15 @@ export function NodeAuthStep({ deviceAuth, onDeviceAuthChange, onComplete }: Nod
       {/* Idle / Error State - Show URL input */}
       {(deviceAuth.status === "idle" || deviceAuth.status === "error") && (
         <>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-semibold text-blue-900 mb-2">Connect to CIRISNode</h3>
-            <p className="text-sm text-blue-800">
-              Connect your agent to the CIRIS network for managed deployment, template provisioning,
-              and deferral routing. Your organization's administrator will approve your agent in the
-              Portal.
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <h3 className="font-semibold text-green-900 mb-2">Register Your Agent</h3>
+            <p className="text-sm text-green-800">
+              Validate and register your agent for $1.00 bond and $0.50 processing fee to support
+              open source AGI alignment infrastructure. Your organization's administrator will
+              approve your agent in the Portal.
+            </p>
+            <p className="text-xs text-green-600 mt-2 italic">
+              For licensed deployment, contact sales@ciris.ai
             </p>
           </div>
 

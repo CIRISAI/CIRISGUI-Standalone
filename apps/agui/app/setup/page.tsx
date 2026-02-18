@@ -19,8 +19,9 @@ import toast from "react-hot-toast";
 type Step = "welcome" | "node_auth" | "llm" | "optional_features" | "users" | "complete";
 // Normal flow steps (excludes node_auth)
 const NORMAL_STEP_ORDER: Step[] = ["welcome", "llm", "optional_features", "users", "complete"];
-// Node flow steps (includes node_auth, skips optional_features and users)
-const NODE_STEP_ORDER: Step[] = ["welcome", "node_auth", "llm", "complete"];
+// Node flow steps (includes node_auth, skips optional_features since Node provisions template)
+// Still requires users step since CIRISNode doesn't handle local authentication
+const NODE_STEP_ORDER: Step[] = ["welcome", "node_auth", "llm", "users", "complete"];
 
 // Default device auth state
 const DEFAULT_DEVICE_AUTH: DeviceAuthState = {
@@ -209,10 +210,8 @@ export default function SetupWizard() {
       toast.error("Base URL is required for this provider");
       return;
     }
-    if (currentProvider?.requires_model && !selectedModel) {
-      toast.error("Model name is required for this provider");
-      return;
-    }
+    // Don't require model upfront - we'll load models after successful validation
+    // The model can be selected after we know the API key works
 
     setValidatingLLM(true);
     try {
@@ -226,6 +225,8 @@ export default function SetupWizard() {
       if (response.valid) {
         setLlmValid(true);
         toast.success(response.message || "LLM configuration validated!");
+        // Auto-refresh models after successful validation
+        loadModels();
       } else {
         setLlmValid(false);
         toast.error(response.error || "LLM validation failed");
@@ -496,31 +497,34 @@ export default function SetupWizard() {
                     </ul>
                   </button>
 
-                  {/* Connect to Node */}
+                  {/* Register Your Agent */}
                   <button
                     onClick={() => {
                       setIsNodeFlow(true);
                       setCurrentStep("node_auth");
                     }}
-                    className={`p-6 border-2 rounded-lg text-left transition-all hover:border-purple-300 hover:bg-purple-50 ${
-                      isNodeFlow ? "border-purple-600 bg-purple-50" : "border-gray-200"
+                    className={`p-6 border-2 rounded-lg text-left transition-all hover:border-green-300 hover:bg-green-50 ${
+                      isNodeFlow ? "border-green-600 bg-green-50" : "border-gray-200"
                     }`}
                   >
                     <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <span className="text-purple-600 text-xl">🌐</span>
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <span className="text-green-600 text-xl">✓</span>
                       </div>
-                      <h3 className="font-semibold text-gray-900">Connect to Node</h3>
+                      <h3 className="font-semibold text-gray-900">Register Your Agent</h3>
                     </div>
                     <p className="text-sm text-gray-600 mb-3">
-                      Connect to your organization's CIRISNode for managed deployment and
-                      centralized agent governance.
+                      Validate and register your agent HW and SW occurrence for $1.00 bond and $0.50
+                      processing fee to support open source AGI alignment infrastructure.
                     </p>
                     <ul className="text-xs text-gray-500 space-y-1">
                       <li>• Organization-managed templates</li>
                       <li>• Centralized deferral routing</li>
                       <li>• Single sign-on with CIRISPortal</li>
                     </ul>
+                    <p className="text-xs text-gray-400 mt-3 italic">
+                      For licensed deployment, contact sales@ciris.ai
+                    </p>
                   </button>
                 </div>
 
@@ -538,7 +542,7 @@ export default function SetupWizard() {
           {currentStep === "node_auth" && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Connect to Node</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Register Agent</h2>
                 <button
                   onClick={() => {
                     setIsNodeFlow(false);

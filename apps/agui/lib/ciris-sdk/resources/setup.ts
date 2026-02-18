@@ -199,7 +199,7 @@ export interface ConnectNodeRequest {
 }
 
 export interface ConnectNodeResponse {
-  verification_uri: string;
+  verification_uri_complete: string;
   device_code: string;
   user_code: string;
   expires_in: number;
