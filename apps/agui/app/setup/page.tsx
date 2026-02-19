@@ -514,8 +514,8 @@ export default function SetupWizard() {
                       <h3 className="font-semibold text-gray-900">Register Your Agent</h3>
                     </div>
                     <p className="text-sm text-gray-600 mb-3">
-                      Validate and register your agent HW and SW occurrence for $1.00 bond and $0.50
-                      processing fee to support open source AGI alignment infrastructure.
+                      Validate and register your agent for $1.50 — $1 refundable bond and $0.50
+                      processing fee that supports open source AGI alignment research.
                     </p>
                     <ul className="text-xs text-gray-500 space-y-1">
                       <li>• Organization-managed templates</li>

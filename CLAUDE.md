@@ -298,18 +298,19 @@ For personal use, development, and self-hosted deployments:
 4. **Account Creation** - Create admin and user accounts
 5. **Complete** - Login with created credentials
 
-### Connect to Node
-For organization-managed deployments with CIRISNode:
-1. **Welcome** - Choose "Connect to Node"
-2. **Node Authorization** - Device auth (RFC 8628) with CIRISPortal
+### Create a Licensed Agent Identity
+For registered agents with Portal validation:
+1. **Welcome** - Choose "Register Your Agent"
+2. **Agent Registration** - Device auth (RFC 8628) with CIRISPortal
 3. **LLM Configuration** - Configure LLM (API key still required)
-4. **Complete** - Agent connected to organization's node
+4. **Complete** - Agent registered and licensed
 
-Node flow features:
+Registration flow features:
+- $1.50 total — $1 refundable bond + $0.50 processing fee supports open source AGI alignment research
 - Organization-managed templates provisioned via CIRISRegistry
 - Centralized deferral routing via CIRISNode
 - SSO authentication managed through CIRISPortal
-- Signing key provisioned automatically
+- Ed25519 signing key provisioned automatically
 
 ## Key Differences from Main CIRISGUI
 
@@ -319,6 +320,6 @@ This standalone version differs from the main CIRISGUI repository:
 - **Static Export**: Optimized for static hosting and localhost use
 - **Simplified Deployment**: Single container or static files
 - **Focused Features**: Core agent interaction without enterprise features
-- **Node Flow Support**: Can connect to CIRISNode for managed deployments
+- **Licensed Agent Flow**: Can register with CIRISPortal for licensed deployments
 
 Remember: This standalone GUI is designed for simple, local CIRIS agent interactions!

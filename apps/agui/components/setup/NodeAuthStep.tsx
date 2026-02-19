@@ -60,7 +60,7 @@ export function NodeAuthStep({ deviceAuth, onDeviceAuthChange, onComplete }: Nod
             nodeUrl: result.node_url || deviceAuth.nodeUrl,
           });
 
-          toast.success("Connected to Node successfully!");
+          toast.success("Agent registered successfully!");
           onComplete();
         } else if (result.status === "error") {
           clearInterval(pollIntervalRef.current!);
@@ -179,9 +179,9 @@ export function NodeAuthStep({ deviceAuth, onDeviceAuthChange, onComplete }: Nod
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <h3 className="font-semibold text-green-900 mb-2">Register Your Agent</h3>
             <p className="text-sm text-green-800">
-              Validate and register your agent for $1.00 bond and $0.50 processing fee to support
-              open source AGI alignment infrastructure. Your organization's administrator will
-              approve your agent in the Portal.
+              Validate and register your agent for $1.50 — $1 refundable bond and $0.50 processing
+              fee that supports open source AGI alignment research. Your organization's
+              administrator will approve your agent in the Portal.
             </p>
             <p className="text-xs text-green-600 mt-2 italic">
               For licensed deployment, contact sales@ciris.ai
@@ -298,7 +298,7 @@ export function NodeAuthStep({ deviceAuth, onDeviceAuthChange, onComplete }: Nod
               <span className="text-green-600 text-xl">✓</span>
             </div>
             <div>
-              <h3 className="font-semibold text-green-900">Connected to Node</h3>
+              <h3 className="font-semibold text-green-900">Agent Registered</h3>
               <p className="text-sm text-green-700">{deviceAuth.nodeUrl}</p>
             </div>
           </div>
