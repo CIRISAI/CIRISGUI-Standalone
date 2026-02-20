@@ -2,3 +2,4 @@
 export { AdapterDiscoveryCard } from "./AdapterDiscoveryCard";
 export { CovenantMetricsConsent } from "./CovenantMetricsConsent";
 export { NodeAuthStep } from "./NodeAuthStep";
+export { TrustSecurityCard } from "./TrustSecurityCard";

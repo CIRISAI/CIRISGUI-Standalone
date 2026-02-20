@@ -233,6 +233,29 @@ export interface VerifySetupState {
   error?: string | null;
 }
 
+// ============================================================================
+// CIRISVerify Status (Trust and Security)
+// ============================================================================
+
+export interface VerifyStatusResponse {
+  /** Whether CIRISVerify library is loaded */
+  loaded: boolean;
+  /** CIRISVerify version if loaded */
+  version?: string | null;
+  /** Hardware security type (TPM_2_0, SOFTWARE_ONLY, etc.) */
+  hardware_type?: string | null;
+  /** Key status: 'none', 'ephemeral', 'portal_pending', 'portal_active' */
+  key_status: string;
+  /** Portal-issued key ID if activated */
+  key_id?: string | null;
+  /** Attestation: 'not_attempted', 'pending', 'verified', 'failed' */
+  attestation_status: string;
+  /** Error message if verify failed to load */
+  error?: string | null;
+  /** Trust and security disclaimer text */
+  disclaimer: string;
+}
+
 /**
  * Setup Resource
  *
@@ -405,5 +428,26 @@ export class SetupResource extends BaseResource {
     return this.transport.get<ConnectNodeStatusResponse>(
       `/v1/setup/connect-node/status?${params.toString()}`
     );
+  }
+
+  // ============================================================================
+  // Trust and Security (CIRISVerify Status)
+  // ============================================================================
+
+  /**
+   * Get CIRISVerify status for Trust and Security display
+   *
+   * Returns the status of CIRISVerify including:
+   * - Whether the library is loaded (REQUIRED for CIRIS 2.0+)
+   * - Hardware security type (TPM, Secure Enclave, Software)
+   * - Key status (none, ephemeral, portal_pending, portal_active)
+   * - Attestation status
+   *
+   * CIRISVerify is REQUIRED for CIRIS 2.0+. Agents cannot run without it.
+   *
+   * @returns Verify status for Trust and Security card
+   */
+  async getVerifyStatus(): Promise<VerifyStatusResponse> {
+    return this.transport.get<VerifyStatusResponse>("/v1/setup/verify-status");
   }
 }

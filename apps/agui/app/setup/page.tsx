@@ -12,7 +12,12 @@ import type {
 } from "../../lib/ciris-sdk/resources/setup";
 import type { AdapterDiscoveryReport } from "../../lib/ciris-sdk/resources/system";
 import LogoIcon from "../../components/ui/floating/LogoIcon";
-import { AdapterDiscoveryCard, CovenantMetricsConsent, NodeAuthStep } from "../../components/setup";
+import {
+  AdapterDiscoveryCard,
+  CovenantMetricsConsent,
+  NodeAuthStep,
+  TrustSecurityCard,
+} from "../../components/setup";
 import toast from "react-hot-toast";
 
 // V2.0: Added node_auth step for Connect to Node flow
@@ -533,6 +538,11 @@ export default function SetupWizard() {
                     <strong>Note:</strong> All data is stored locally on your machine. Your API keys
                     and passwords are encrypted and never shared.
                   </p>
+                </div>
+
+                {/* Trust and Security Card */}
+                <div className="mt-6">
+                  <TrustSecurityCard />
                 </div>
               </div>
             </div>
