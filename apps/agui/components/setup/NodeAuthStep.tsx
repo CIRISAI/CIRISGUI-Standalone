@@ -177,15 +177,97 @@ export function NodeAuthStep({ deviceAuth, onDeviceAuthChange, onComplete }: Nod
       {(deviceAuth.status === "idle" || deviceAuth.status === "error") && (
         <>
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h3 className="font-semibold text-green-900 mb-2">Register Your Agent</h3>
-            <p className="text-sm text-green-800">
-              Validate and register your agent for $1.50 — $1 refundable bond and $0.50 processing
-              fee that supports open source AGI alignment research. Your organization's
-              administrator will approve your agent in the Portal.
+            <h3 className="font-semibold text-green-900 mb-2">Register Your Agent Identity</h3>
+            <p className="text-sm text-green-800 mb-3">
+              Join the CIRIS community and enable cryptographic verification of your agent's
+              behavior.
             </p>
-            <p className="text-xs text-green-600 mt-2 italic">
+
+            {/* Benefits list */}
+            <ul className="space-y-2 mb-3">
+              <li className="flex items-start gap-2 text-sm text-green-800">
+                <span className="text-green-600 mt-0.5">✓</span>
+                <span>
+                  <strong>Audit trail</strong> — cryptographically-signed traces begin
+                </span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-green-800">
+                <span className="text-green-600 mt-0.5">✓</span>
+                <span>
+                  <strong>Coherence Ratchet</strong> — coordinated deception becomes mathematically
+                  harder over time
+                </span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-green-800">
+                <span className="text-green-600 mt-0.5">✓</span>
+                <span>
+                  <strong>CIRIS Scoring</strong> — measures integrity across interactions
+                </span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-green-800">
+                <span className="text-green-600 mt-0.5">✓</span>
+                <span>
+                  <strong>Community template (Ally)</strong> included
+                </span>
+              </li>
+            </ul>
+
+            <p className="text-sm font-medium text-green-900 mb-2">
+              $1.00 refundable bond + $0.50 processing fee
+            </p>
+
+            <p className="text-xs text-green-600">
+              Identity keys are bound to your agent — transfers not yet supported
+            </p>
+            <p className="text-xs text-green-600 mt-1 italic">
               For licensed deployment, contact sales@ciris.ai
             </p>
+            <div className="mt-3 pt-3 border-t border-green-200 text-xs text-green-700">
+              <a
+                href="https://scout.ciris.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-green-900"
+              >
+                Scout (sample agent)
+              </a>
+              {" · "}
+              <a
+                href="https://github.com/CIRISAI/CIRISAgent"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-green-900"
+              >
+                Agent
+              </a>
+              {" · "}
+              <a
+                href="https://github.com/CIRISAI/CIRISRegistry"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-green-900"
+              >
+                Registry
+              </a>
+              {" · "}
+              <a
+                href="https://github.com/CIRISAI/CIRISVerify"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-green-900"
+              >
+                Verify
+              </a>
+              {" · "}
+              <a
+                href="https://github.com/CIRISAI"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-green-900"
+              >
+                Learn more →
+              </a>
+            </div>
           </div>
 
           {/* Quick select buttons */}
