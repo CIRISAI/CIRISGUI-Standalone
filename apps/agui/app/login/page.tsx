@@ -80,14 +80,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8">
-        <div>
-          <LogoIcon className="mx-auto h-12 w-auto text-brand-primary fill-brand-primary" />
-          <h2 className="mt-6 text-center text-3xl text-brand-primary font-extrabold">
-            Sign in to CIRIS
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">Standalone Mode</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700">
+      <div className="max-w-md w-full space-y-8 p-8 bg-white/95 backdrop-blur rounded-2xl shadow-2xl">
+        <div className="text-center">
+          {/* Large C logo matching KMP */}
+          <div className="text-7xl font-bold text-indigo-600 mb-2">C</div>
+          <h2 className="text-2xl font-bold text-gray-900">CIRIS Agent</h2>
+          <p className="mt-1 text-sm text-gray-500">Ethical AI Assistant</p>
+
           {error && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
               <p className="text-sm text-red-600">{error.message}</p>
@@ -95,7 +95,15 @@ export default function LoginPage() {
           )}
         </div>
 
-        <form onSubmit={handleLogin} className="mt-8 space-y-6">
+        {/* Info text matching KMP - explains local auth */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            This is a standalone CIRIS deployment. Authentication is managed locally on your device.
+            Your credentials were set during setup.
+          </p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-5">
           <div className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">
@@ -108,7 +116,7 @@ export default function LoginPage() {
                 required
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="mt-1 appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm"
                 placeholder="Enter username"
                 disabled={loading}
               />
@@ -125,29 +133,40 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="mt-1 appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm"
                 placeholder="Enter password"
                 disabled={loading}
               />
-              <p className="mt-1 text-xs text-gray-500">
-                Default credentials: <span className="font-mono font-medium">admin</span> /{" "}
-                <span className="font-mono font-medium">ciris_admin_password</span>
-              </p>
             </div>
           </div>
 
           <button
             type="submit"
             disabled={loading || !username || !password}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
 
-        {/* Version indicator */}
-        <div className="mt-4 text-center text-xs text-gray-400">
-          v{SDK_VERSION.version} • {SDK_VERSION.gitHash?.substring(0, 7) || "dev"}
+        {/* Privacy link matching KMP */}
+        <div className="text-center">
+          <a
+            href="https://ciris.ai/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+          >
+            View Privacy Policy
+          </a>
+        </div>
+
+        {/* Footer matching KMP */}
+        <div className="text-center text-xs text-gray-400">
+          <p>Powered by CIRIS AI</p>
+          <p className="mt-1">
+            v{SDK_VERSION.version} • {SDK_VERSION.gitHash?.substring(0, 7) || "dev"}
+          </p>
         </div>
       </div>
     </div>

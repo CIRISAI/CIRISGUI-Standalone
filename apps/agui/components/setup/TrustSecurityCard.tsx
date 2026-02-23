@@ -98,6 +98,11 @@ export function TrustSecurityCard({ className = "" }: TrustSecurityCardProps) {
             {error || status?.error}
           </p>
         )}
+        {status?.diagnostic_info && (
+          <p className="text-xs text-red-600 bg-red-100 rounded p-2 font-mono mt-2">
+            Debug: {status.diagnostic_info}
+          </p>
+        )}
         <div className="mt-3 pt-3 border-t border-red-200 text-xs text-red-700">
           <a
             href="https://github.com/CIRISAI/CIRISVerify"
@@ -154,6 +159,22 @@ export function TrustSecurityCard({ className = "" }: TrustSecurityCardProps) {
           </div>
         )}
       </div>
+
+      {/* Warning if key is not portal_active */}
+      {status.key_status !== "portal_active" && (
+        <div className="text-xs text-yellow-800 bg-yellow-100 border border-yellow-300 rounded p-2 mb-3">
+          <p className="font-semibold mb-1">⚠ Portal Key Not Active</p>
+          <p className="mb-1">
+            The purchased portal key was not saved to the hardware keystore. This may be a bug in
+            CIRISVerify key persistence.
+          </p>
+          {status.diagnostic_info && (
+            <p className="font-mono text-yellow-700 text-[10px] mt-1">
+              Debug: {status.diagnostic_info}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Disclaimer */}
       <div className="text-xs text-emerald-700 bg-emerald-100 rounded p-2">

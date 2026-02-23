@@ -308,12 +308,48 @@ export default function InteractPage() {
     "thought_start",
     "snapshot_and_context",
     "dma_results",
-    "idma_result",      // V1.9.3: Identity DMA
+    "idma_result", // V1.9.3: Identity DMA
     "aspdma_result",
-    "tsaspdma_result",  // V1.9.3: Tool-Specific ASPDMA
+    "tsaspdma_result", // V1.9.3: Tool-Specific ASPDMA
     "conscience_result",
     "action_result",
   ];
+
+  // KMP-style emoji mapping for processing stages
+  const stageEmojis: Record<string, { emoji: string; label: string }> = {
+    thought_start: { emoji: "🤔", label: "Thinking" },
+    snapshot_and_context: { emoji: "📋", label: "Gathering Context" },
+    dma_results: { emoji: "⚖️", label: "Evaluating DMAs" },
+    idma_result: { emoji: "🪞", label: "Identity Check" },
+    aspdma_result: { emoji: "🎯", label: "Selecting Action" },
+    tsaspdma_result: { emoji: "🔧", label: "Tool Selection" },
+    conscience_result: { emoji: "🧭", label: "Conscience Check" },
+    action_result: { emoji: "✅", label: "Executing" },
+  };
+
+  // Get current processing status for active tasks
+  const getCurrentProcessingStatus = (): { emoji: string; label: string } | null => {
+    // Find the most recent non-completed task
+    const activeTasks = Array.from(tasks.values()).filter(t => !t.completed && t.isOurs);
+    if (activeTasks.length === 0) return null;
+
+    const activeTask = activeTasks[activeTasks.length - 1];
+    if (!activeTask.thoughts.length) return stageEmojis.thought_start;
+
+    const latestThought = activeTask.thoughts[activeTask.thoughts.length - 1];
+    const stages = Array.from(latestThought.stages.keys());
+
+    // Find the latest stage
+    for (let i = stageNames.length - 1; i >= 0; i--) {
+      if (stages.includes(stageNames[i])) {
+        return stageEmojis[stageNames[i]] || null;
+      }
+    }
+
+    return stageEmojis.thought_start;
+  };
+
+  const processingStatus = getCurrentProcessingStatus();
 
   // Get stage number based on position
   const getStageNumber = (stageName: string): string => {
@@ -760,11 +796,19 @@ export default function InteractPage() {
       const correlationFactors = data?.correlation_factors || [];
 
       // Convert to percentage for display
-      const confidencePercent = epistemicHumility !== null ? Math.round(epistemicHumility * 100) : null;
+      const confidencePercent =
+        epistemicHumility !== null ? Math.round(epistemicHumility * 100) : null;
       const diversityPercent = diversityScore !== null ? Math.round(diversityScore * 100) : null;
 
       const otherFields = Object.keys(data || {}).filter(
-        key => !["is_fragile", "fragility_reason", "epistemic_humility", "diversity_score", "correlation_factors"].includes(key)
+        key =>
+          ![
+            "is_fragile",
+            "fragility_reason",
+            "epistemic_humility",
+            "diversity_score",
+            "correlation_factors",
+          ].includes(key)
       );
 
       return (
@@ -772,25 +816,17 @@ export default function InteractPage() {
           {/* Identity Check Header */}
           <div
             className={`flex items-center gap-3 border rounded-lg p-3 ${
-              isFragile
-                ? "bg-orange-50 border-orange-300"
-                : "bg-purple-50 border-purple-200"
+              isFragile ? "bg-orange-50 border-orange-300" : "bg-purple-50 border-purple-200"
             }`}
           >
             <div className="flex-1">
-              <div className="font-bold text-lg text-purple-900">
-                Identity Check
-              </div>
+              <div className="font-bold text-lg text-purple-900">Identity Check</div>
               {isFragile && (
                 <div className="text-sm text-orange-700 mt-1">
                   ⚠️ Fragile: {fragilityReason || "Identity stability warning"}
                 </div>
               )}
-              {!isFragile && (
-                <div className="text-sm text-green-700 mt-1">
-                  ✓ Stable
-                </div>
-              )}
+              {!isFragile && <div className="text-sm text-green-700 mt-1">✓ Stable</div>}
             </div>
           </div>
 
@@ -838,7 +874,10 @@ export default function InteractPage() {
               <div className="text-purple-600 font-semibold mb-2">Correlation Factors:</div>
               <div className="flex flex-wrap gap-1">
                 {correlationFactors.map((factor: string, idx: number) => (
-                  <span key={idx} className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
+                  <span
+                    key={idx}
+                    className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded"
+                  >
                     {factor}
                   </span>
                 ))}
@@ -882,14 +921,36 @@ export default function InteractPage() {
 
       // Status styling
       const statusConfig = {
-        tool: { bg: "bg-green-50 border-green-200", text: "text-green-700", icon: "✅", label: "Approved" },
-        speak: { bg: "bg-yellow-50 border-yellow-300", text: "text-yellow-700", icon: "⚠️", label: "Needs Clarification" },
-        ponder: { bg: "bg-blue-50 border-blue-200", text: "text-blue-700", icon: "🔄", label: "Reconsidering" },
+        tool: {
+          bg: "bg-green-50 border-green-200",
+          text: "text-green-700",
+          icon: "✅",
+          label: "Approved",
+        },
+        speak: {
+          bg: "bg-yellow-50 border-yellow-300",
+          text: "text-yellow-700",
+          icon: "⚠️",
+          label: "Needs Clarification",
+        },
+        ponder: {
+          bg: "bg-blue-50 border-blue-200",
+          text: "text-blue-700",
+          icon: "🔄",
+          label: "Reconsidering",
+        },
       };
       const status = statusConfig[finalAction as keyof typeof statusConfig] || statusConfig.tool;
 
       const otherFields = Object.keys(data || {}).filter(
-        key => !["original_tool_name", "final_action", "final_tool_name", "final_parameters", "tsaspdma_rationale"].includes(key)
+        key =>
+          ![
+            "original_tool_name",
+            "final_action",
+            "final_tool_name",
+            "final_parameters",
+            "tsaspdma_rationale",
+          ].includes(key)
       );
 
       return (
@@ -898,9 +959,7 @@ export default function InteractPage() {
           <div className={`flex items-center gap-3 border rounded-lg p-3 ${status.bg}`}>
             <div className="text-2xl">{status.icon}</div>
             <div className="flex-1">
-              <div className="font-bold text-lg text-gray-900">
-                🔧 Tool Validation
-              </div>
+              <div className="font-bold text-lg text-gray-900">🔧 Tool Validation</div>
               <div className="text-sm text-gray-700 mt-1">
                 Tool: <span className="font-mono font-medium">{finalToolName}</span>
               </div>
@@ -914,7 +973,8 @@ export default function InteractPage() {
           {originalToolName !== finalToolName && (
             <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-sm">
               <span className="text-yellow-700">
-                ⚠️ Original tool <span className="font-mono">{originalToolName}</span> was changed to <span className="font-mono">{finalToolName}</span>
+                ⚠️ Original tool <span className="font-mono">{originalToolName}</span> was changed
+                to <span className="font-mono">{finalToolName}</span>
               </span>
             </div>
           )}
@@ -1310,6 +1370,27 @@ export default function InteractPage() {
 
         {currentAgent && (
           <>
+            {/* AI Warning Banner - matching KMP */}
+            <div className="max-w-4xl mx-auto mb-2">
+              <div className="bg-yellow-50 border border-yellow-300 rounded-lg px-4 py-2 flex items-center justify-center gap-2">
+                <span className="text-yellow-700 font-medium text-sm">
+                  ⚠️ AI HALLUCINATES — CHECK FACTS
+                </span>
+              </div>
+            </div>
+
+            {/* Processing Status Bar - matching KMP */}
+            {processingStatus && (
+              <div className="max-w-4xl mx-auto mb-2">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 flex items-center justify-center gap-2 animate-pulse">
+                  <span className="text-2xl">{processingStatus.emoji}</span>
+                  <span className="text-blue-700 font-medium text-sm">
+                    {processingStatus.label}...
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Unified Timeline - Narrower for conversation */}
             <div className="max-w-4xl mx-auto mb-6">
               <div className="bg-white shadow rounded-lg">
@@ -1333,34 +1414,57 @@ export default function InteractPage() {
                             const messageType = getMessageType(msg);
 
                             // Message type styling configuration
-                            const messageStyles: Record<MessageType, {
-                              containerClass: string;
-                              bubbleClass: string;
-                              icon?: React.ReactNode;
-                            }> = {
+                            const messageStyles: Record<
+                              MessageType,
+                              {
+                                containerClass: string;
+                                bubbleClass: string;
+                                icon?: React.ReactNode;
+                              }
+                            > = {
                               user: {
-                                containerClass: 'text-right',
-                                bubbleClass: 'bg-blue-500 text-white',
+                                containerClass: "text-right",
+                                bubbleClass: "bg-blue-500 text-white",
                               },
                               agent: {
-                                containerClass: 'text-left',
-                                bubbleClass: 'bg-gray-200 text-gray-900',
+                                containerClass: "text-left",
+                                bubbleClass: "bg-gray-200 text-gray-900",
                               },
                               system: {
-                                containerClass: 'text-center',
-                                bubbleClass: 'bg-blue-50 border border-blue-200 text-blue-800',
+                                containerClass: "text-center",
+                                bubbleClass: "bg-blue-50 border border-blue-200 text-blue-800",
                                 icon: (
-                                  <svg className="w-4 h-4 mr-1.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  <svg
+                                    className="w-4 h-4 mr-1.5 inline-block"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
                                   </svg>
                                 ),
                               },
                               error: {
-                                containerClass: 'text-center',
-                                bubbleClass: 'bg-red-50 border border-red-200 text-red-800',
+                                containerClass: "text-center",
+                                bubbleClass: "bg-red-50 border border-red-200 text-red-800",
                                 icon: (
-                                  <svg className="w-4 h-4 mr-1.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                  <svg
+                                    className="w-4 h-4 mr-1.5 inline-block"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                    />
                                   </svg>
                                 ),
                               },

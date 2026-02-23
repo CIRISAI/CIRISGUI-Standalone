@@ -252,6 +252,8 @@ export interface VerifyStatusResponse {
   attestation_status: string;
   /** Error message if verify failed to load */
   error?: string | null;
+  /** Detailed diagnostic info for troubleshooting */
+  diagnostic_info?: string | null;
   /** Trust and security disclaimer text */
   disclaimer: string;
 }

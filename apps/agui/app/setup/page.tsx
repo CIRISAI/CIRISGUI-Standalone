@@ -465,31 +465,108 @@ export default function SetupWizard() {
           {/* Step 1: Welcome */}
           {currentStep === "welcome" && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-900">Let's Get Started</h2>
+              {/* Badge: 100% Free & Open Source */}
+              <div className="flex justify-center">
+                <span className="inline-flex items-center px-4 py-2 rounded-lg bg-green-100 text-green-700 text-sm font-bold">
+                  ✓ 100% Free & Open Source
+                </span>
+              </div>
+
+              <h2 className="text-2xl font-bold text-gray-900 text-center">Let's Get Started</h2>
+
               <div className="prose prose-indigo max-w-none">
-                <p className="text-gray-700 leading-relaxed">
-                  CIRIS is a next-generation AI assistant that prioritizes cognitive integrity,
-                  transparency, and ethical decision-making. Choose how you'd like to set up your
-                  agent:
+                {/* Register Your Agent Identity - Primary CTA matching KMP */}
+                <div className="bg-green-50 border border-green-200 rounded-xl p-6 not-prose">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-lg font-bold text-green-800">
+                      Register Your Agent Identity
+                    </h3>
+                    <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">
+                      OPTIONAL
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-700 mb-4">
+                    Join the CIRIS community and enable cryptographic attestation against the public
+                    infrastructure and your audit log.
+                  </p>
+
+                  {/* Benefits list matching KMP */}
+                  <ul className="space-y-2 mb-4">
+                    <li className="flex items-start gap-2 text-sm text-green-700">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <span>Audit trail — cryptographically-signed traces begin</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-green-700">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <span>
+                        Coherence Ratchet — coordinated deception becomes mathematically harder over
+                        time
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-green-700">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <span>CIRIS Scoring — measures integrity across interactions</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-green-700">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <span>Community template (Ally) included</span>
+                    </li>
+                  </ul>
+
+                  <p className="text-sm font-medium text-green-800 mb-4">
+                    $1.00 refundable bond + $0.50 processing fee
+                  </p>
+
+                  <button
+                    onClick={() => {
+                      setIsNodeFlow(true);
+                      setCurrentStep("node_auth");
+                    }}
+                    className="w-full py-3 bg-green-700 hover:bg-green-800 text-white font-bold rounded-lg transition-colors"
+                  >
+                    Connect to CIRIS Portal
+                  </button>
+
+                  <p className="text-xs text-gray-500 text-center mt-3">
+                    Identity keys are bound to your agent — transfers not yet supported
+                  </p>
+                  <p className="text-xs text-gray-400 text-center mt-1">
+                    For licensed deployment, contact sales@ciris.ai
+                  </p>
+                  <p className="text-xs text-gray-400 text-center mt-2">
+                    Skip for now - you can register later in Settings
+                  </p>
+                </div>
+
+                {/* Main description */}
+                <p className="text-gray-700 leading-relaxed text-center mt-6">
+                  CIRIS is an ethical AI assistant that runs on your device. Your conversations and
+                  data stay private.
                 </p>
 
-                {/* Setup mode selection */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 not-prose">
-                  {/* Standard Setup */}
+                {/* AI Nature Disclaimer - matching KMP */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-4 not-prose">
+                  <h4 className="text-sm font-bold text-blue-800 mb-2">ℹ️ What CIRIS Is</h4>
+                  <p className="text-sm text-blue-700">
+                    CIRIS is an AI tool, not a friend, therapist, or human substitute. For emotional
+                    support, please reach out to real people in your life or professional services.
+                  </p>
+                </div>
+
+                {/* Standard Setup option */}
+                <div className="mt-6 not-prose">
                   <button
                     onClick={() => {
                       setIsNodeFlow(false);
                       setCurrentStep("llm");
                     }}
-                    className={`p-6 border-2 rounded-lg text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
-                      !isNodeFlow ? "border-indigo-600 bg-indigo-50" : "border-gray-200"
-                    }`}
+                    className="w-full p-6 border-2 border-gray-200 rounded-xl text-left transition-all hover:border-indigo-300 hover:bg-indigo-50"
                   >
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
                         <span className="text-indigo-600 text-xl">🔑</span>
                       </div>
-                      <h3 className="font-semibold text-gray-900">Standard Setup</h3>
+                      <h3 className="font-semibold text-gray-900">Standard Setup (BYOK)</h3>
                     </div>
                     <p className="text-sm text-gray-600 mb-3">
                       Configure your own LLM API key and create local user accounts. Best for
@@ -501,42 +578,15 @@ export default function SetupWizard() {
                       <li>• Full control over configuration</li>
                     </ul>
                   </button>
-
-                  {/* Register Your Agent */}
-                  <button
-                    onClick={() => {
-                      setIsNodeFlow(true);
-                      setCurrentStep("node_auth");
-                    }}
-                    className={`p-6 border-2 rounded-lg text-left transition-all hover:border-green-300 hover:bg-green-50 ${
-                      isNodeFlow ? "border-green-600 bg-green-50" : "border-gray-200"
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                        <span className="text-green-600 text-xl">✓</span>
-                      </div>
-                      <h3 className="font-semibold text-gray-900">Register Your Agent</h3>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">
-                      Validate and register your agent for $1.50 — $1 refundable bond and $0.50
-                      processing fee that supports open source AGI alignment research.
-                    </p>
-                    <ul className="text-xs text-gray-500 space-y-1">
-                      <li>• Organization-managed templates</li>
-                      <li>• Centralized deferral routing</li>
-                      <li>• Single sign-on with CIRISPortal</li>
-                    </ul>
-                    <p className="text-xs text-gray-400 mt-3 italic">
-                      For licensed deployment, contact sales@ciris.ai
-                    </p>
-                  </button>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-                  <p className="text-sm text-blue-900">
-                    <strong>Note:</strong> All data is stored locally on your machine. Your API keys
-                    and passwords are encrypted and never shared.
+                {/* How it works - matching KMP */}
+                <div className="bg-gray-100 rounded-xl p-4 mt-4 not-prose">
+                  <h4 className="text-sm font-bold text-gray-800 mb-2">How it works</h4>
+                  <p className="text-sm text-gray-600">
+                    CIRIS runs entirely on your device. However, AI reasoning requires powerful
+                    servers. CIRIS connects to privacy-respecting AI providers that never train on
+                    your data and never store your conversations.
                   </p>
                 </div>
 
